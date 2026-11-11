@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inplay-trader-sim-v2';
+const CACHE_NAME = 'inplay-trader-sim-v3';
 const ASSETS = [
   './',
   './index.html',
