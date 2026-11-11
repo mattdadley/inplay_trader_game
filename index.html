@@ -592,6 +592,44 @@
         </div>
       </div>
     </div>
+
+    <!-- First-Race Welcome Controls Window -->
+    <div id="welcomeControlsModal" class="modal-backdrop" onclick="closeWelcomeModal()">
+      <div class="result-card" onclick="event.stopPropagation()" style="max-width:340px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-size:15.5px; font-weight:800; color:#FFFFFF;">Trading Controls</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:1px;">Quick guide for your first race</div>
+          </div>
+          <span style="padding:3px 8px; border-radius:6px; font-size:10.5px; font-weight:800; background:rgba(77,163,255,0.16); color:var(--backText);">HOW TO TRADE</span>
+        </div>
+
+        <div style="background:#11151B; border:1px solid var(--gridStrong); border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:10px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:14px; font-weight:800; color:var(--layText);">↑ Swipe up to Lay</span>
+            <span style="font-size:11px; color:var(--muted); font-weight:600;">Oppose runner</span>
+          </div>
+          <div style="height:1px; background:var(--grid);"></div>
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:14px; font-weight:800; color:var(--backText);">↓ Swipe down to Back</span>
+            <span style="font-size:11px; color:var(--muted); font-weight:600;">Support runner</span>
+          </div>
+          <div style="height:1px; background:var(--grid);"></div>
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:14px; font-weight:800; color:var(--profit);">👆 2× Tap to Hedge</span>
+            <span style="font-size:11px; color:var(--muted); font-weight:600;">Green / close trade</span>
+          </div>
+          <div style="height:1px; background:var(--grid);"></div>
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:12px; font-weight:700; color:#FFFFFF;">Tap Column: <span style="color:var(--backText);">Blue Back</span> / <span style="color:var(--layText);">Salmon Lay</span></span>
+          </div>
+        </div>
+
+        <button onclick="closeWelcomeModal()" style="width:100%; padding:13px 10px; border:none; border-radius:10px; background:var(--profit); color:#08240F; font-size:13.5px; font-weight:800; cursor:pointer;">
+          Start Trading ▶
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- ======================= SETTINGS SCREEN ======================= -->
@@ -1451,30 +1489,28 @@ class TradeEngine {
       return;
     }
 
-    const stake = stakeForLiability(side, plan.entry);
-    const exitStake = greenStake(stake, plan.entry, plan.exit);
     const bankroll = Math.max(0, career?.bankroll ?? 100);
-
-    // Check if entry or offset bet exceeds bankroll:
-    // Specifically: if a Back bet creates an offset Lay bet (stake or liability) bigger than the Bankroll,
-    // or if a Lay bet's liability / offset Back stake exceeds the Bankroll, reject with "Exceeds Bankroll"
-    const entryLiability = side === 'back'
-      ? stake
-      : Math.round(stake * (plan.entry - 1.0) * 100) / 100;
-    const offsetLayLiability = side === 'back'
-      ? Math.round(exitStake * (plan.exit - 1.0) * 100) / 100
-      : 0;
-    const offsetBackRisk = side === 'lay' ? exitStake : 0;
-
-    if (
-      bankroll <= 0 ||
-      entryLiability > bankroll + 1e-6 ||
-      (side === 'back' && (exitStake > bankroll + 1e-6 || offsetLayLiability > bankroll + 1e-6)) ||
-      (side === 'lay' && offsetBackRisk > bankroll + 1e-6)
-    ) {
+    if (bankroll <= 0) {
       this.onMessage('Exceeds Bankroll', true);
       return;
     }
+
+    let stake = stakeForLiability(side, plan.entry);
+
+    // Exceeds Bankroll is only true to the liability created through a Lay bet
+    // (e.g. if bankroll is £50 and a £50 Lay bet is entered at odds > 2.0, liability > £50).
+    // For a Back bet, you can only bet up to the full amount of your bankroll.
+    if (side === 'lay') {
+      const layLiability = Math.round(stake * (plan.entry - 1.0) * 100) / 100;
+      if (layLiability > bankroll + 1e-6) {
+        this.onMessage('Exceeds Bankroll', true);
+        return;
+      }
+    } else {
+      stake = Math.min(stake, Math.round(bankroll * 100) / 100);
+    }
+
+    const exitStake = greenStake(stake, plan.entry, plan.exit);
 
     const keepInPlay = settings.keepInPlay;
     const placedPreOff = !s.inPlay;
@@ -3232,7 +3268,7 @@ function renderSettingsScreen() {
       <div class="card-row">
         <div>
           <div style="font-size:13.5px; font-weight:600;">Max Bankroll Liability Active</div>
-          <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Stake size automatically adjusts to match £${calcL.toFixed(2)} bankroll</div>
+          <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Stake matches £${calcL.toFixed(2)} bankroll (Back bets stake up to £${calcL.toFixed(2)}; Lay bets &gt; 2.0 exceed bankroll)</div>
         </div>
         <span class="tabular" style="font-size:15px; font-weight:800; color:var(--leader);">£${calcL.toFixed(2)}</span>
       </div>
