@@ -609,8 +609,34 @@
     </div>
 
     <div class="scroll-body">
-      <div class="sec-title">STAKE</div>
-      <div id="uiStakeRow" style="display:flex; gap:6px;"></div>
+      <div class="sec-title">STAKE &amp; LIABILITY</div>
+      <div class="card-box">
+        <div class="card-row" onclick="setStakeMode('fixedLiability')" style="cursor:pointer;">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600; color:#FFFFFF;">Fixed Liability</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Adjusts your stake size to match the exact odds taken</div>
+          </div>
+          <div id="radioFixedLiability" style="width:20px; height:20px; border-radius:50%; border:2px solid var(--profit); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <div style="width:10px; height:10px; border-radius:50%; background:var(--profit);"></div>
+          </div>
+        </div>
+        <div class="card-row" onclick="setStakeMode('percentageLiability')" style="cursor:pointer;">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600; color:#FFFFFF;">Percentage Liability</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Calculated as a fixed percentage of your total bankroll rather than a flat cash amount</div>
+          </div>
+          <div id="radioPercentageLiability" style="width:20px; height:20px; border-radius:50%; border:2px solid var(--muted); display:flex; align-items:center; justify-content:center; flex-shrink:0;"></div>
+        </div>
+        <div class="card-row" onclick="setStakeMode('maxBankrollLiability')" style="cursor:pointer;">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600; color:#FFFFFF;">Max Bankroll Liability</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Adjusts your stake size to match the user’s bankroll amount</div>
+          </div>
+          <div id="radioMaxBankrollLiability" style="width:20px; height:20px; border-radius:50%; border:2px solid var(--muted); display:flex; align-items:center; justify-content:center; flex-shrink:0;"></div>
+        </div>
+      </div>
+
+      <div id="uiStakeRow" style="display:flex; flex-direction:column; gap:8px;"></div>
 
       <div class="sec-title">ENTRY</div>
       <div class="card-box">
@@ -620,6 +646,13 @@
             <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Tap a column: blue = Back, salmon = Lay. Swipes still work</div>
           </div>
           <button id="swTapToTrade" class="switch-btn on" onclick="toggleSetting('tapToTrade')"><div class="switch-thumb"></div></button>
+        </div>
+        <div class="card-row">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600;">Set to Keep (In-Play)</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Trades placed before the race goes in-play are kept when the race goes in-play</div>
+          </div>
+          <button id="swKeepInPlay" class="switch-btn on" onclick="toggleSetting('keepInPlay')"><div class="switch-thumb"></div></button>
         </div>
       </div>
 
@@ -632,7 +665,7 @@
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <button class="step-btn" onclick="stepSetting('exitTicks', -1, 1, 60)">−</button>
-            <span id="valExitTicks" class="tabular" style="min-width:24px; text-align:center; font-weight:700;">13</span>
+            <span id="valExitTicks" class="tabular" style="min-width:24px; text-align:center; font-weight:700;">5</span>
             <button class="step-btn" onclick="stepSetting('exitTicks', 1, 1, 60)">+</button>
           </div>
         </div>
@@ -643,7 +676,7 @@
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <button class="step-btn" onclick="stepSetting('entryOffsetTicks', -1, 0, 20)">−</button>
-            <span id="valEntryOffset" class="tabular" style="min-width:24px; text-align:center; font-weight:700;">2</span>
+            <span id="valEntryOffset" class="tabular" style="min-width:24px; text-align:center; font-weight:700;">1</span>
             <button class="step-btn" onclick="stepSetting('entryOffsetTicks', 1, 0, 20)">+</button>
           </div>
         </div>
@@ -681,7 +714,7 @@
             <div style="font-size:14px; font-weight:600;">Trailing stop</div>
             <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Stop follows price when it moves your way</div>
           </div>
-          <button id="swTrailingStop" class="switch-btn on" onclick="toggleSetting('trailingStop')"><div class="switch-thumb"></div></button>
+          <button id="swTrailingStop" class="switch-btn" onclick="toggleSetting('trailingStop')"><div class="switch-thumb"></div></button>
         </div>
         <div class="card-row">
           <div style="padding-right:12px;">
@@ -1064,17 +1097,41 @@ class MarketMotion {
 // ============================================================================
 const settings = {
   stake: 5,
+  stakeMode: 'fixedLiability', // 'fixedLiability' | 'percentageLiability' | 'maxBankrollLiability'
+  liabilityPct: 10,
   tapToTrade: true,
-  exitTicks: 13,
-  entryOffsetTicks: 2,
+  keepInPlay: true,
+  exitTicks: 5,
+  entryOffsetTicks: 1,
   fireTogether: false,
   stopLossTicks: 8,
-  trailingStop: true,
+  trailingStop: false,
   trailTicks: 7,
   timedExit: true,
   timedExitSecs: 10,
   autoHedge: false
 };
+
+function getTargetLiability() {
+  const bank = Math.max(0, career?.bankroll ?? 100);
+  if (settings.stakeMode === 'percentageLiability') {
+    return Math.round(bank * (settings.liabilityPct / 100) * 100) / 100;
+  }
+  if (settings.stakeMode === 'maxBankrollLiability') {
+    return Math.round(bank * 100) / 100;
+  }
+  return settings.stake;
+}
+
+function stakeForLiability(side, entryPrice) {
+  const targetL = getTargetLiability();
+  if (side === 'lay') {
+    const mult = Math.max(0.01, entryPrice - 1.0);
+    return Math.max(0.01, Math.round((targetL / mult) * 100) / 100);
+  }
+  // For a Back bet, liability on the entry bet is the stake itself
+  return Math.max(0.01, Math.round(targetL * 100) / 100);
+}
 
 const HORSE_NAMES = [
   'Copper Kettle', 'Night Lantern', 'Hollow Oak', 'Saltmarsh',
@@ -1214,7 +1271,7 @@ class SimRace {
     };
   }
 
-  place(sel, side, price, size) {
+  place(sel, side, price, size, keep = settings.keepInPlay) {
     const o = {
       id: `S${this._nextId++}`,
       sel,
@@ -1223,6 +1280,7 @@ class SimRace {
       size,
       matched: 0,
       cancelled: false,
+      keep: !!keep,
       get remaining() { return this.cancelled ? 0 : this.size - this.matched; }
     };
     this._orders.push(o);
@@ -1276,7 +1334,12 @@ class SimRace {
   snapshot() {
     if (this.inPlay && !this._lapsedAtOff) {
       this._lapsedAtOff = true;
-      this.cancelAll();
+      // Set to Keep: only cancel unmatched pre-off orders that do NOT have keep set
+      for (const o of this._orders) {
+        if (!o.keep && o.remaining > 0) {
+          o.cancelled = true;
+        }
+      }
     }
     const books = this.market.runners.map((_, i) => this._book(i));
     const orders = this._orders.map(o => ({
@@ -1288,7 +1351,8 @@ class SimRace {
       sizeMatched: o.matched,
       sizeRemaining: o.remaining,
       complete: o.remaining <= 0,
-      avgPriceMatched: o.matched > 0 ? o.price : null
+      avgPriceMatched: o.matched > 0 ? o.price : null,
+      keep: o.keep
     }));
     const matches = this._orders.filter(o => o.matched > 0).map(o => ({
       selectionId: o.sel,
@@ -1336,6 +1400,7 @@ class TradeEngine {
     this.onMessage = onMessage;
     this.trades = {};
     this._snap = null;
+    this._prevLtp = {};
     this.pending = 0;
   }
 
@@ -1344,14 +1409,14 @@ class TradeEngine {
     return r ? `#${r.sortPriority}` : '#?';
   }
 
-  async _place(sel, side, price, stake) {
+  async _place(sel, side, price, stake, keep = settings.keepInPlay) {
     this.pending++;
     renderUI();
     try {
       if (currentRace.inPlay) {
         await new Promise(r => setTimeout(r, 450));
       }
-      return currentRace.place(sel, side, price, Math.round(stake * 100) / 100);
+      return currentRace.place(sel, side, price, Math.round(stake * 100) / 100, keep);
     } finally {
       this.pending--;
       renderUI();
@@ -1385,7 +1450,34 @@ class TradeEngine {
       this.onMessage('No room for an exit at that price', true);
       return;
     }
-    const stake = settings.stake;
+
+    const stake = stakeForLiability(side, plan.entry);
+    const exitStake = greenStake(stake, plan.entry, plan.exit);
+    const bankroll = Math.max(0, career?.bankroll ?? 100);
+
+    // Check if entry or offset bet exceeds bankroll:
+    // Specifically: if a Back bet creates an offset Lay bet (stake or liability) bigger than the Bankroll,
+    // or if a Lay bet's liability / offset Back stake exceeds the Bankroll, reject with "Exceeds Bankroll"
+    const entryLiability = side === 'back'
+      ? stake
+      : Math.round(stake * (plan.entry - 1.0) * 100) / 100;
+    const offsetLayLiability = side === 'back'
+      ? Math.round(exitStake * (plan.exit - 1.0) * 100) / 100
+      : 0;
+    const offsetBackRisk = side === 'lay' ? exitStake : 0;
+
+    if (
+      bankroll <= 0 ||
+      entryLiability > bankroll + 1e-6 ||
+      (side === 'back' && (exitStake > bankroll + 1e-6 || offsetLayLiability > bankroll + 1e-6)) ||
+      (side === 'lay' && offsetBackRisk > bankroll + 1e-6)
+    ) {
+      this.onMessage('Exceeds Bankroll', true);
+      return;
+    }
+
+    const keepInPlay = settings.keepInPlay;
+    const placedPreOff = !s.inPlay;
     const t = {
       selectionId: sel,
       side,
@@ -1393,6 +1485,8 @@ class TradeEngine {
       entryPrice: plan.entry,
       exitPrice: plan.exit,
       openedAt: Date.now(),
+      placedPreOff,
+      keepInPlay,
       matchedPrice: null,
       baseline: positionFor(sel, s.matches).ifLoses,
       entryBetId: null,
@@ -1405,6 +1499,8 @@ class TradeEngine {
       bestIdx: null,
       hedging: false,
       busy: true,
+      passedThrough: false,
+      exitPassedThrough: false,
       get exitSide() { return this.side === 'back' ? 'lay' : 'back'; },
       get entryMatched() { return this.matchedAt != null; },
       get stopPrice() { return this.stopIdx == null ? null : Ticks.at(this.stopIdx); },
@@ -1415,9 +1511,10 @@ class TradeEngine {
       }
     };
     this.trades[sel] = t;
-    this.onMessage(`${side === 'back' ? 'Back' : 'Lay'} ${this._cloth(sel)} £${stake.toFixed(2)} @ ${Ticks.fmt(plan.entry)} → ${Ticks.fmt(plan.exit)}…`, false);
+    const keepTag = placedPreOff && keepInPlay ? ' (KEEP)' : '';
+    this.onMessage(`${side === 'back' ? 'Back' : 'Lay'} ${this._cloth(sel)} £${stake.toFixed(2)} @ ${Ticks.fmt(plan.entry)} → ${Ticks.fmt(plan.exit)}${keepTag}…`, false);
 
-    const res = await this._place(sel, side, plan.entry, stake);
+    const res = await this._place(sel, side, plan.entry, stake, keepInPlay);
     t.busy = false;
     if (!res.ok || !res.betId) {
       delete this.trades[sel];
@@ -1426,6 +1523,27 @@ class TradeEngine {
     }
     t.entryBetId = res.betId;
     t.placedMatched = res.sizeMatched;
+
+    // Check immediately if entry position was jumped over during in-play delay
+    if (res.sizeMatched <= 0) {
+      const snapAfter = currentRace.snapshot();
+      const bAfter = snapAfter.runner(sel);
+      const jumpedEntry = side === 'back'
+        ? (bAfter?.bestBack != null && bAfter.bestBack < plan.entry - 1e-9)
+        : (bAfter?.bestLay != null && bAfter.bestLay > plan.entry + 1e-9);
+      if (jumpedEntry) {
+        t.passedThrough = true;
+        this.onMessage('Passed Through', true);
+      }
+    }
+
+    // If "Fire entry + exit together" is enabled, place the offset exit order right away
+    if (settings.fireTogether && !t.cancelRequested) {
+      const exitSide = side === 'back' ? 'lay' : 'back';
+      const exitRes = currentRace.place(sel, exitSide, plan.exit, exitStake, keepInPlay);
+      t.exitBetId = exitRes.betId || null;
+    }
+
     if (t.cancelRequested) this.cancelEntry(sel);
   }
 
@@ -1458,6 +1576,12 @@ class TradeEngine {
       const t = this.trades[sel];
       if (t) this._manage(t, s);
     }
+    if (s && s.runners) {
+      for (const r of s.runners) {
+        const p = r.lastTraded ?? r.bestBack;
+        if (p != null) this._prevLtp[r.selectionId] = p;
+      }
+    }
   }
 
   _manage(t, s) {
@@ -1470,10 +1594,41 @@ class TradeEngine {
     const pos = positionFor(sel, s.matches);
     const level = Math.abs(pos.ifWins - pos.ifLoses) < 0.05;
     const open = s.orders.filter(o => o.selectionId === sel && !o.complete && o.sizeRemaining > 0);
+    const book = s.runner(sel);
+    const ltp = book?.lastTraded ?? (t.side === 'back' ? book?.bestBack : book?.bestLay);
+    const prevLtp = this._prevLtp[sel];
 
-    // Timeout unmatched entry
+    // Detect if unmatched entry position has been jumped over ("Passed Through")
+    if (entry && !entry.complete && matched <= 0 && !t.passedThrough && book) {
+      const jumpedEntry = t.side === 'back'
+        ? ((book.bestBack != null && book.bestBack < t.entryPrice - 1e-9) ||
+           (prevLtp != null && ltp != null && prevLtp >= t.entryPrice && ltp < t.entryPrice - 1e-9))
+        : ((book.bestLay != null && book.bestLay > t.entryPrice + 1e-9) ||
+           (prevLtp != null && ltp != null && prevLtp <= t.entryPrice && ltp > t.entryPrice + 1e-9));
+      if (jumpedEntry) {
+        t.passedThrough = true;
+        this.onMessage('Passed Through', true);
+      }
+    }
+
+    // Detect if exit position has been jumped over ("Passed Through")
+    if (!t.exitPassedThrough && book) {
+      const jumpedExit = t.side === 'back'
+        ? ((book.bestLay != null && book.bestLay < t.exitPrice - 1e-9) ||
+           (prevLtp != null && ltp != null && prevLtp >= t.exitPrice && ltp < t.exitPrice - 1e-9))
+        : ((book.bestBack != null && book.bestBack > t.exitPrice + 1e-9) ||
+           (prevLtp != null && ltp != null && prevLtp <= t.exitPrice && ltp > t.exitPrice + 1e-9));
+      if (jumpedExit) {
+        t.exitPassedThrough = true;
+        this.onMessage('Passed Through', true);
+      }
+    }
+
+    // Timeout unmatched entry:
+    // If trade was placed pre-off with Keep enabled, keep it active pre-off and in-play
+    const shouldKeep = t.placedPreOff && t.keepInPlay;
     const limitMs = (s.betDelay + AppConfig.entryTimeoutSecs) * 1000;
-    if (entry && !entry.complete && !t.entryCancelSent && (now - t.openedAt) > limitMs) {
+    if (!shouldKeep && entry && !entry.complete && !t.entryCancelSent && (now - t.openedAt) > limitMs) {
       t.entryCancelSent = true;
       currentRace.cancel([t.entryBetId]);
     }
@@ -1489,7 +1644,11 @@ class TradeEngine {
     if (entryDone && matched <= 0) {
       if (t.exitBetId) currentRace.cancel([t.exitBetId]);
       delete this.trades[sel];
-      this.onMessage(`${this._cloth(sel)}: entry not matched, cancelled`, false);
+      if (t.passedThrough || t.exitPassedThrough) {
+        this.onMessage('Passed Through', true);
+      } else {
+        this.onMessage(`${this._cloth(sel)}: entry not matched, cancelled`, false);
+      }
       return;
     }
     if (matched <= 0) return;
@@ -1498,9 +1657,14 @@ class TradeEngine {
       const entryP = t.matchedPrice ?? t.entryPrice;
       const exitP = t.exitPrice;
       const side = t.side;
+      const wasPassedThrough = t.exitPassedThrough;
       delete this.trades[sel];
       const r = pos.ifLoses - t.baseline;
-      this.onMessage(`${this._cloth(sel)} closed ${r >= 0 ? '+' : '-'}£${Math.abs(r).toFixed(2)}`, r < 0);
+      if (wasPassedThrough) {
+        this.onMessage(`Passed Through · ${this._cloth(sel)} closed ${r >= 0 ? '+' : '-'}£${Math.abs(r).toFixed(2)}`, r < 0);
+      } else {
+        this.onMessage(`${this._cloth(sel)} closed ${r >= 0 ? '+' : '-'}£${Math.abs(r).toFixed(2)}`, r < 0);
+      }
       triggerExitMatched(sel, side, entryP, exitP);
       return;
     }
@@ -1512,14 +1676,13 @@ class TradeEngine {
       const diff = pos.ifWins - pos.ifLoses;
       const stake = Math.abs(diff) / t.exitPrice;
       const side = diff > 0 ? 'lay' : 'back';
-      const res = currentRace.place(sel, side, t.exitPrice, Math.round(stake * 100) / 100);
+      const res = currentRace.place(sel, side, t.exitPrice, Math.round(stake * 100) / 100, t.keepInPlay);
       t.exitBetId = res.betId || 'none';
     }
 
     if (!settings.autoHedge) return;
 
     // Stop loss / trailing stop
-    const book = s.runner(sel);
     const close = t.side === 'back' ? book?.bestLay : book?.bestBack;
     if (settings.stopLossTicks > 0 && close != null) {
       const ci = Ticks.index(close);
@@ -2975,19 +3138,111 @@ function closeSettings() {
   renderUI();
 }
 
+function setStakeMode(mode) {
+  settings.stakeMode = mode;
+  renderSettingsScreen();
+}
+
 function renderSettingsScreen() {
+  const mode = settings.stakeMode || 'fixedLiability';
+  const modes = [
+    { id: 'fixedLiability', el: 'radioFixedLiability' },
+    { id: 'percentageLiability', el: 'radioPercentageLiability' },
+    { id: 'maxBankrollLiability', el: 'radioMaxBankrollLiability' }
+  ];
+  for (const m of modes) {
+    const r = document.getElementById(m.el);
+    if (!r) continue;
+    const active = mode === m.id;
+    r.style.borderColor = active ? AppColors.profit : AppColors.muted;
+    r.innerHTML = active
+      ? `<div style="width:10px; height:10px; border-radius:50%; background:${AppColors.profit};"></div>`
+      : '';
+  }
+
   const stakeRow = document.getElementById('uiStakeRow');
   stakeRow.innerHTML = '';
-  for (const v of AppConfig.stakePresets) {
-    const selected = settings.stake === v;
-    const btn = document.createElement('button');
-    btn.style.cssText = `flex:1; height:44px; border:none; border-radius:10px; font-size:15px; font-weight:800; cursor:pointer; background:${selected ? '#FFFFFF' : '#1C222B'}; color:${selected ? AppColors.bg : '#FFFFFF'};`;
-    btn.textContent = `£${v}`;
-    btn.onclick = () => { settings.stake = v; renderSettingsScreen(); };
-    stakeRow.appendChild(btn);
+  const bank = Math.max(0, career?.bankroll ?? 100);
+
+  if (mode === 'fixedLiability') {
+    const presetRow = document.createElement('div');
+    presetRow.style.cssText = 'display:flex; gap:6px;';
+    for (const v of AppConfig.stakePresets) {
+      const selected = settings.stake === v;
+      const btn = document.createElement('button');
+      btn.style.cssText = `flex:1; height:44px; border:none; border-radius:10px; font-size:15px; font-weight:800; cursor:pointer; background:${selected ? '#FFFFFF' : '#1C222B'}; color:${selected ? AppColors.bg : '#FFFFFF'};`;
+      btn.textContent = `£${v}`;
+      btn.onclick = () => { settings.stake = v; renderSettingsScreen(); };
+      presetRow.appendChild(btn);
+    }
+    stakeRow.appendChild(presetRow);
+
+    const customBox = document.createElement('div');
+    customBox.className = 'card-box';
+    customBox.innerHTML = `
+      <div class="card-row">
+        <div>
+          <div style="font-size:13.5px; font-weight:600;">Fixed Liability Amount</div>
+          <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Target liability: £${settings.stake.toFixed(2)} (Bankroll: £${bank.toFixed(2)})</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="step-btn" onclick="stepSetting('stake', -1, 1, 500)">−</button>
+          <span class="tabular" style="min-width:44px; text-align:center; font-weight:700;">£${settings.stake}</span>
+          <button class="step-btn" onclick="stepSetting('stake', 1, 1, 500)">+</button>
+        </div>
+      </div>
+    `;
+    stakeRow.appendChild(customBox);
+  } else if (mode === 'percentageLiability') {
+    const pctPresets = [2, 5, 10, 20, 50];
+    const presetRow = document.createElement('div');
+    presetRow.style.cssText = 'display:flex; gap:6px;';
+    for (const p of pctPresets) {
+      const selected = settings.liabilityPct === p;
+      const btn = document.createElement('button');
+      btn.style.cssText = `flex:1; height:44px; border:none; border-radius:10px; font-size:15px; font-weight:800; cursor:pointer; background:${selected ? '#FFFFFF' : '#1C222B'}; color:${selected ? AppColors.bg : '#FFFFFF'};`;
+      btn.textContent = `${p}%`;
+      btn.onclick = () => { settings.liabilityPct = p; renderSettingsScreen(); };
+      presetRow.appendChild(btn);
+    }
+    stakeRow.appendChild(presetRow);
+
+    const calcL = getTargetLiability();
+    const customBox = document.createElement('div');
+    customBox.className = 'card-box';
+    customBox.innerHTML = `
+      <div class="card-row">
+        <div>
+          <div style="font-size:13.5px; font-weight:600;">Bankroll Percentage</div>
+          <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Target liability: £${calcL.toFixed(2)} (${settings.liabilityPct}% of £${bank.toFixed(2)})</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="step-btn" onclick="stepSetting('liabilityPct', -1, 1, 100)">−</button>
+          <span class="tabular" style="min-width:40px; text-align:center; font-weight:700;">${settings.liabilityPct}%</span>
+          <button class="step-btn" onclick="stepSetting('liabilityPct', 1, 1, 100)">+</button>
+        </div>
+      </div>
+    `;
+    stakeRow.appendChild(customBox);
+  } else {
+    const calcL = getTargetLiability();
+    const maxBox = document.createElement('div');
+    maxBox.className = 'card-box';
+    maxBox.innerHTML = `
+      <div class="card-row">
+        <div>
+          <div style="font-size:13.5px; font-weight:600;">Max Bankroll Liability Active</div>
+          <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Stake size automatically adjusts to match £${calcL.toFixed(2)} bankroll</div>
+        </div>
+        <span class="tabular" style="font-size:15px; font-weight:800; color:var(--leader);">£${calcL.toFixed(2)}</span>
+      </div>
+    `;
+    stakeRow.appendChild(maxBox);
   }
 
   document.getElementById('swTapToTrade').classList.toggle('on', settings.tapToTrade);
+  const swKeep = document.getElementById('swKeepInPlay');
+  if (swKeep) swKeep.classList.toggle('on', settings.keepInPlay);
   document.getElementById('swFireTogether').classList.toggle('on', settings.fireTogether);
   document.getElementById('swAutoHedge').classList.toggle('on', settings.autoHedge);
   document.getElementById('swTrailingStop').classList.toggle('on', settings.trailingStop);
