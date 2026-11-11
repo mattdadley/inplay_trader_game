@@ -621,11 +621,11 @@
           </div>
           <div style="height:1px; background:var(--grid);"></div>
           <div style="display:flex; align-items:center; justify-content:space-between;">
-            <span style="font-size:12px; font-weight:700; color:#FFFFFF;">Tap Column: <span style="color:var(--backText);">Blue Back</span> / <span style="color:var(--layText);">Salmon Lay</span></span>
+            <span style="font-size:12px; font-weight:700; color:#FFFFFF;">Tap Lit Column: <span style="color:var(--backText);">Blue Back</span> / <span style="color:var(--layText);">Salmon Lay</span></span>
           </div>
         </div>
 
-        <button onclick="closeWelcomeModal()" style="width:100%; padding:13px 10px; border:none; border-radius:10px; background:var(--profit); color:#08240F; font-size:13.5px; font-weight:800; cursor:pointer;">
+        <button id="btnStartTradingModal" onclick="closeWelcomeModal()" style="width:100%; padding:13px 10px; border:none; border-radius:10px; background:var(--profit); color:#08240F; font-size:13.5px; font-weight:800; cursor:pointer;">
           Start Trading ▶
         </button>
       </div>
@@ -681,7 +681,7 @@
         <div class="card-row">
           <div style="padding-right:12px;">
             <div style="font-size:14px; font-weight:600;">Tap to trade</div>
-            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Tap a column: blue = Back, salmon = Lay. Swipes still work</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Tap when lit: Blue Back / Salmon Lay</div>
           </div>
           <button id="swTapToTrade" class="switch-btn on" onclick="toggleSetting('tapToTrade')"><div class="switch-thumb"></div></button>
         </div>
@@ -1937,6 +1937,17 @@ function setStatus(msg, bad = false) {
 function hideResultModal() {
   const modal = document.getElementById('raceResultModal');
   if (modal) modal.classList.add('hidden');
+}
+
+function closeWelcomeModal() {
+  const modal = document.getElementById('welcomeControlsModal');
+  if (modal && !modal.classList.contains('hidden')) {
+    modal.classList.add('hidden');
+    if (currentRace && currentRace.inPlay) {
+      offAtMs = Date.now() - Math.max(0, (currentRace._t - currentRace._preOff) * 1000);
+    }
+    renderUI();
+  }
 }
 
 function settleFinishedRace(s) {
@@ -3436,6 +3447,8 @@ startInitialScreenshotRace();
 
 setInterval(() => {
   if (!currentRace || currentRace.closed) return;
+  const welcomeModal = document.getElementById('welcomeControlsModal');
+  if (welcomeModal && !welcomeModal.classList.contains('hidden')) return;
   currentRace.step(0.3);
   onNewSnapshot(currentRace.snapshot());
 }, 300);
