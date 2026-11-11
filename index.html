@@ -1,0 +1,3161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0E1116">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="InPlay Sim">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <title>In-Play Column Trader — Racing Sim</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    :root {
+      --bg: #0E1116;
+      --panel: #171B22;
+      --panelLine: #263040;
+      --grid: #1E242D;
+      --gridStrong: #262D38;
+      --track: #2A313C;
+      --muted: #8B93A1;
+      --text2: #C9CED6;
+      --back: #4DA3FF;
+      --backText: #8EC5FF;
+      --lay: #FF8A7A;
+      --layText: #FFB3A8;
+      --range: #4A5466;
+      --leader: #F2C14E;
+      --shortGold: #FFD700;
+      --amber: #F5A623;
+      --profit: #3DDC84;
+      --loss: #FF5A5A;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background-color: #06080b;
+      color: #FFFFFF;
+      font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #appRoot {
+      width: 100%;
+      max-width: 412px;
+      height: 100vh;
+      max-height: 840px;
+      margin: 0 auto;
+      background-color: var(--bg);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 40px rgba(0,0,0,0.8);
+    }
+
+    .screen {
+      position: absolute;
+      inset: 0;
+      background-color: var(--bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .tabular {
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum";
+    }
+
+    /* Top Bar */
+    .top-bar {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      padding-right: 8px;
+      flex-shrink: 0;
+    }
+
+    .back-btn {
+      width: 40px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: #FFFFFF;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .back-btn:active {
+      opacity: 0.6;
+    }
+
+    .top-titles {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .top-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: #FFFFFF;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+
+    .top-subtitle {
+      font-size: 10.5px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.25;
+      margin-top: 1px;
+    }
+
+    .bankroll-pill {
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: #171B22;
+      border: 1px solid var(--panelLine);
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--leader);
+      margin-right: 5px;
+      cursor: pointer;
+      flex-shrink: 0;
+      line-height: 1.1;
+    }
+
+    .status-pill {
+      padding: 3px 6px;
+      border-radius: 6px;
+      border: 1.5px solid var(--profit);
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--profit);
+      flex-shrink: 0;
+      line-height: 1.1;
+    }
+
+    .delay-pill {
+      margin-left: 5px;
+      padding: 4px 6px;
+      border-radius: 6px;
+      background-color: #1C222B;
+      color: var(--text2);
+      font-size: 10.5px;
+      font-weight: 600;
+      flex-shrink: 0;
+      line-height: 1.1;
+    }
+
+    /* Race Progress Bar */
+    .progress-wrap {
+      height: 58px;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 14px;
+    }
+
+    .progress-elapsed {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .progress-pct {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--profit);
+    }
+
+    .progress-track-area {
+      flex: 1;
+      position: relative;
+    }
+
+    /* Trade Ticket */
+    .ticket-outer {
+      padding: 2px 8px 4px 8px;
+      flex-shrink: 0;
+    }
+
+    .ticket-box {
+      width: 100%;
+      padding: 6px 10px;
+      background-color: var(--panel);
+      border: 1px solid var(--panelLine);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ticket-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 3px;
+      min-height: 20px;
+    }
+
+    .ticket-badge {
+      width: 50px;
+      padding: 2px 0;
+      border-radius: 5px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--bg);
+      flex-shrink: 0;
+    }
+
+    .ticket-desc {
+      margin-left: 7px;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #FFFFFF;
+      white-space: nowrap;
+    }
+
+    .ticket-state {
+      margin-left: 7px;
+      font-size: 10.5px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .ticket-timer {
+      margin-left: 5px;
+      padding: 2px 5px;
+      border-radius: 5px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--bg);
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .ticket-green {
+      margin-left: auto;
+      padding-left: 6px;
+      font-size: 14px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .ticket-status-line {
+      height: 18px;
+      display: flex;
+      align-items: center;
+      font-size: 11.5px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .spinner {
+      width: 11px;
+      height: 11px;
+      border: 2px solid var(--back);
+      border-top-color: transparent;
+      border-radius: 50%;
+      margin-right: 6px;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Trading Grid */
+    .trading-grid-outer {
+      flex: 1;
+      padding-right: 3px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .trading-grid {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Settings & Race Card Screens */
+    .scroll-body {
+      flex: 1;
+      overflow-y: auto;
+      touch-action: pan-y;
+      padding: 4px 14px 72px 14px;
+    }
+
+    .sec-title {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.8px;
+      color: var(--muted);
+      margin: 14px 0 6px 2px;
+    }
+
+    .card-box {
+      background-color: var(--panel);
+      border: 1px solid var(--panelLine);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-row {
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--grid);
+    }
+
+    .card-row:last-child {
+      border-bottom: none;
+    }
+
+    .step-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background-color: #232934;
+      border: none;
+      color: #FFFFFF;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .step-btn:active {
+      background-color: #323b49;
+    }
+
+    .switch-btn {
+      width: 44px;
+      height: 24px;
+      border-radius: 12px;
+      background-color: #263040;
+      position: relative;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.15s;
+      flex-shrink: 0;
+    }
+
+    .switch-btn.on {
+      background-color: var(--back);
+    }
+
+    .switch-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background-color: #FFFFFF;
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.15s;
+    }
+
+    .switch-btn.on .switch-thumb {
+      transform: translateX(20px);
+    }
+
+    #inPlayFlashOverlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(61, 220, 132, 0.32);
+      pointer-events: none;
+      z-index: 60;
+      opacity: 0;
+      transition: opacity 450ms ease-out;
+    }
+
+    .top-gesture-hint {
+      margin: 2px 8px 0 8px;
+      height: 20px;
+      background: var(--panel);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    /* Post-Race Results Modal */
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 10, 14, 0.84);
+      backdrop-filter: blur(4px);
+      z-index: 80;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .result-card {
+      width: 100%;
+      background: var(--panel);
+      border: 1.5px solid var(--panelLine);
+      border-radius: 16px;
+      padding: 18px 16px;
+      box-shadow: 0 18px 48px rgba(0,0,0,0.75);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .dist-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .dist-card {
+      background: var(--panel);
+      border: 1px solid var(--panelLine);
+      border-radius: 10px;
+      padding: 10px 11px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .dist-card:active, .dist-card.active {
+      border-color: var(--back);
+      background: rgba(77, 163, 255, 0.12);
+    }
+  </style>
+</head>
+<body>
+
+<div id="appRoot">
+
+  <!-- ======================= TRADER SCREEN ======================= -->
+  <div id="screenTrader" class="screen">
+    <div id="inPlayFlashOverlay"></div>
+
+    <!-- Top Gesture Hint Bar at very top of screen -->
+    <div id="uiTopGestureHint" class="top-gesture-hint"></div>
+
+    <!-- TopBar -->
+    <div class="top-bar">
+      <button class="back-btn" onclick="openSettings()" title="Settings">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <div class="top-titles" onclick="openRaceListScreen()" title="Tap to open Race Card & Career">
+        <div id="uiMarketTitle" class="top-title">15:37 Ascot · 1m2f</div>
+        <div id="uiMarketSub" class="top-subtitle">7 runners · Championship Stakes</div>
+      </div>
+      <div id="uiBankrollPill" class="bankroll-pill tabular" onclick="openRaceListScreen()" title="Career Bankroll (tap for Race Card & Stats)">£100.00</div>
+      <button id="btnArm" onclick="toggleArm()" style="border:none; border-radius:8px; background:#3A1D1D; cursor:pointer; display:flex; align-items:center; gap:5px; padding:4px 8px; margin-right:5px;">
+        <span id="armDot" style="width:8px; height:8px; border-radius:50%; background:#FF5A5A; display:inline-block;"></span>
+        <span id="armLabel" style="font-size:11px; font-weight:800; color:#FF5A5A; letter-spacing:0.2px;">LIVE</span>
+      </button>
+      <div id="uiStatusBadge" class="status-pill">IN-PLAY</div>
+      <div id="uiDelayBadge" class="delay-pill">delay 1s</div>
+    </div>
+
+    <!-- RaceProgressBar -->
+    <div class="progress-wrap">
+      <div class="progress-labels">
+        <span id="uiElapsedText" class="progress-elapsed">0:04 elapsed</span>
+        <span id="uiProgressRight" class="progress-pct">6% run</span>
+      </div>
+      <div id="uiProgressTrack" class="progress-track-area">
+        <canvas id="progressCanvas" style="width:100%; height:100%; display:block;"></canvas>
+      </div>
+    </div>
+
+    <!-- TradeTicket -->
+    <div class="ticket-outer">
+      <div class="ticket-box">
+        <div id="uiTicketRows"></div>
+        <div class="ticket-status-line">
+          <div id="uiPendingSpinner" class="spinner hidden"></div>
+          <span id="uiStatusText">Lay #3 £5.00 @ 13 → 19.5…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TradingGrid -->
+    <div class="trading-grid-outer">
+      <div id="uiTradingGrid" class="trading-grid">
+        <canvas id="gridCanvas" style="width:100%; height:100%; display:block;"></canvas>
+
+        <!-- Compact HEDGE ALL button overlaid on bottom-left -->
+        <div id="uiBottomLeft" style="position:absolute; left:16px; width:86px; bottom:6px; height:36px; display:flex;">
+          <button id="btnHedgeAll" onclick="engine.hedgeAll()" style="flex:1; border:none; border-radius:10px; background:#3DDC84; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0 6px;">
+            <span style="font-size:11.5px; font-weight:800; color:#08240F; letter-spacing:0.2px;">HEDGE ALL</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Post-Race Results & Settlement Modal -->
+    <div id="raceResultModal" class="modal-backdrop hidden">
+      <div class="result-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div id="resRaceTitle" style="font-size:15px; font-weight:800; color:#FFFFFF;">15:37 Ascot · 1m2f</div>
+            <div style="font-size:11px; color:var(--muted);">OFFICIAL PHOTO FINISH & SETTLEMENT</div>
+          </div>
+          <span id="resStatusTag" style="padding:3px 8px; border-radius:6px; font-size:10.5px; font-weight:800; background:rgba(61,220,132,0.16); color:var(--profit);">HEDGED</span>
+        </div>
+
+        <!-- Podium 1st / 2nd / 3rd -->
+        <div id="resPodium" style="background:#11151B; border:1px solid var(--gridStrong); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:6px;"></div>
+
+        <!-- Race P&L & Bankroll -->
+        <div style="background:#11151B; border:1px solid var(--gridStrong); border-radius:10px; padding:12px; display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-size:10.5px; color:var(--muted); font-weight:700;">RACE P&L</div>
+            <div id="resRacePnl" class="tabular" style="font-size:24px; font-weight:900; color:var(--profit); margin-top:2px;">+£0.36</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:10.5px; color:var(--muted); font-weight:700;">CAREER BANKROLL</div>
+            <div id="resBankroll" class="tabular" style="font-size:18px; font-weight:800; color:var(--leader); margin-top:2px;">£100.36</div>
+            <div id="resCareerSub" class="tabular" style="font-size:10.5px; color:var(--muted); margin-top:1px;">Career: +£0.36 · 1/1 won</div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div style="display:flex; gap:8px; margin-top:2px;">
+          <button onclick="nextCardRace()" style="flex:1.3; padding:13px 10px; border:none; border-radius:10px; background:var(--profit); color:#08240F; font-size:13.5px; font-weight:800; cursor:pointer;">
+            Next Race ▶
+          </button>
+          <button onclick="hideResultModal(); openRaceListScreen();" style="flex:1; padding:13px 10px; border:1px solid var(--panelLine); border-radius:10px; background:#232934; color:#FFFFFF; font-size:12.5px; font-weight:700; cursor:pointer;">
+            Race Card
+          </button>
+          <button onclick="hideResultModal()" style="padding:13px 10px; border:1px solid var(--panelLine); border-radius:10px; background:transparent; color:var(--muted); font-size:12px; font-weight:700; cursor:pointer;">
+            Chart
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= SETTINGS SCREEN ======================= -->
+  <div id="screenSettings" class="screen hidden">
+    <div class="top-bar" style="height:56px;">
+      <button class="back-btn" onclick="closeSettings()">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <div class="top-titles">
+        <div class="top-title" style="font-size:17px;">Trade settings</div>
+        <div class="top-subtitle">Applies to new positions</div>
+      </div>
+    </div>
+
+    <div class="scroll-body">
+      <div class="sec-title">STAKE</div>
+      <div id="uiStakeRow" style="display:flex; gap:6px;"></div>
+
+      <div class="sec-title">ENTRY</div>
+      <div class="card-box">
+        <div class="card-row">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600;">Tap to trade</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Tap a column: blue = Back, salmon = Lay. Swipes still work</div>
+          </div>
+          <button id="swTapToTrade" class="switch-btn on" onclick="toggleSetting('tapToTrade')"><div class="switch-thumb"></div></button>
+        </div>
+      </div>
+
+      <div class="sec-title">EXIT (BANDING)</div>
+      <div class="card-box">
+        <div class="card-row">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600;">Exit ticks</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Exit order placed this far from the matched entry</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="step-btn" onclick="stepSetting('exitTicks', -1, 1, 60)">−</button>
+            <span id="valExitTicks" class="tabular" style="min-width:24px; text-align:center; font-weight:700;">13</span>
+            <button class="step-btn" onclick="stepSetting('exitTicks', 1, 1, 60)">+</button>
+          </div>
+        </div>
+        <div class="card-row">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600;">Entry offset</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Ticks given away so bets still match after the delay</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="step-btn" onclick="stepSetting('entryOffsetTicks', -1, 0, 20)">−</button>
+            <span id="valEntryOffset" class="tabular" style="min-width:24px; text-align:center; font-weight:700;">2</span>
+            <button class="step-btn" onclick="stepSetting('entryOffsetTicks', 1, 0, 20)">+</button>
+          </div>
+        </div>
+        <div class="card-row">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600;">Fire entry + exit together</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Off: exit fires when entry fills</div>
+          </div>
+          <button id="swFireTogether" class="switch-btn" onclick="toggleSetting('fireTogether')"><div class="switch-thumb"></div></button>
+        </div>
+      </div>
+
+      <div class="sec-title">HEDGING</div>
+      <div class="card-box">
+        <div class="card-row">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600;">Auto-hedge</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Master switch for stop loss, trailing stop and timed exit</div>
+          </div>
+          <button id="swAutoHedge" class="switch-btn" onclick="toggleSetting('autoHedge')"><div class="switch-thumb"></div></button>
+        </div>
+        <div class="card-row">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600;">Stop loss</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Hedge if price moves this many ticks against you (0 = off)</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="step-btn" onclick="stepSetting('stopLossTicks', -1, 0, 40)">−</button>
+            <span id="valStopLoss" class="tabular" style="min-width:24px; text-align:center; font-weight:700;">8</span>
+            <button class="step-btn" onclick="stepSetting('stopLossTicks', 1, 0, 40)">+</button>
+          </div>
+        </div>
+        <div class="card-row">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600;">Trailing stop</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Stop follows price when it moves your way</div>
+          </div>
+          <button id="swTrailingStop" class="switch-btn on" onclick="toggleSetting('trailingStop')"><div class="switch-thumb"></div></button>
+        </div>
+        <div class="card-row">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600;">Timed exit (seconds)</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Hedge at market after this long</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <button class="step-btn" onclick="stepSetting('timedExitSecs', -1, 3, 60)">−</button>
+            <span id="valTimedExit" class="tabular" style="min-width:24px; text-align:center; font-weight:700;">10s</span>
+            <button class="step-btn" onclick="stepSetting('timedExitSecs', 1, 3, 60)">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec-title">RACE & CAREER</div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button onclick="cancelAllFromSettings()" style="padding:13px; border-radius:12px; border:1px solid var(--panelLine); background:var(--panel); color:#FFFFFF; font-size:14px; font-weight:700; cursor:pointer;">
+          Cancel unmatched bets
+        </button>
+        <button onclick="openRaceListScreen()" style="padding:13px; border-radius:12px; border:1px solid rgba(77,163,255,0.4); background:rgba(77,163,255,0.12); color:var(--backText); font-size:14px; font-weight:700; cursor:pointer;">
+          Open Race Card & Career Hub
+        </button>
+        <button onclick="resetCareerFromSettings()" style="padding:13px; border-radius:12px; border:1px solid rgba(255,90,90,0.4); background:rgba(255,90,90,0.12); color:var(--loss); font-size:14px; font-weight:700; cursor:pointer;">
+          Reset Career Bankroll (£100.00)
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================= RACE CARD & CAREER HUB SCREEN ======================= -->
+  <div id="screenRaces" class="screen hidden">
+    <div class="top-bar" style="height:56px; border-bottom:1px solid var(--grid);">
+      <button class="back-btn" onclick="closeRaceListScreen()" title="Back to Race">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <div class="top-titles">
+        <div class="top-title" style="font-size:17px;">Race Card & Career</div>
+        <div class="top-subtitle">Select a distance or daily meeting</div>
+      </div>
+      <button class="back-btn" onclick="generateDailyCard(); renderRaceList();" title="Refresh Card">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+        </svg>
+      </button>
+    </div>
+    <div id="uiRaceListBody" class="scroll-body" style="padding-top:10px;"></div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================================
+// 1. COLORS & CONSTANTS (Exact from lib/ui/range_columns.dart & lib/config.dart)
+// ============================================================================
+const AppColors = {
+  bg: '#0E1116',
+  panel: '#171B22',
+  panelLine: '#263040',
+  grid: '#1E242D',
+  gridStrong: '#262D38',
+  track: '#2A313C',
+  muted: '#8B93A1',
+  text2: '#C9CED6',
+  back: '#4DA3FF',
+  backText: '#8EC5FF',
+  lay: '#FF8A7A',
+  layText: '#FFB3A8',
+  range: '#4A5466',
+  leader: '#F2C14E',
+  shortGold: '#FFD700',
+  amber: '#F5A623',
+  profit: '#3DDC84',
+  loss: '#FF5A5A',
+  direction(d) {
+    return d === 'steaming' ? this.back : d === 'drifting' ? this.lay : this.muted;
+  }
+};
+
+function rgba(hex, alpha) {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+const AppConfig = {
+  stakePresets: [2, 5, 10, 20, 50],
+  gridMaxPrice: 20,
+  minStake: 1.0,
+  entryTimeoutSecs: 3
+};
+
+// ============================================================================
+// 2. TICKS & PRICE AXIS (Exact from lib/ticks.dart & lib/ui/range_columns.dart)
+// ============================================================================
+const Ticks = {
+  bands: [
+    [2, 0.01],
+    [3, 0.02],
+    [4, 0.05],
+    [6, 0.1],
+    [10, 0.2],
+    [20, 0.5],
+    [30, 1],
+    [50, 2],
+    [100, 5],
+    [1000, 10]
+  ],
+  minPrice: 1.01,
+  maxPrice: 1000,
+
+  increment(price) {
+    for (const b of this.bands) {
+      if (price < b[0]) return b[1];
+    }
+    return 10;
+  },
+
+  _round(v) {
+    return Math.round(v * 100) / 100;
+  },
+
+  snap(price) {
+    if (price <= this.minPrice) return this.minPrice;
+    if (price >= this.maxPrice) return this.maxPrice;
+    let lower = 1.0;
+    for (const b of this.bands) {
+      const upTo = b[0], inc = b[1];
+      if (price <= upTo) {
+        const steps = Math.round((price - lower) / inc);
+        return this._round(lower + steps * inc);
+      }
+      lower = upTo;
+    }
+    return this.maxPrice;
+  },
+
+  move(price, n) {
+    let p = this.snap(price);
+    for (let i = 0; i < Math.abs(n); i++) {
+      if (n > 0) {
+        p = this._round(p + this.increment(p));
+      } else {
+        p = this._round(p - this.increment(p - 0.0001));
+      }
+      if (p <= this.minPrice) return this.minPrice;
+      if (p >= this.maxPrice) return this.maxPrice;
+    }
+    return p;
+  },
+
+  fmt(price) {
+    if (price == null) return '-';
+    if (price >= 100) return price.toFixed(0);
+    if (price >= 10) return price.toFixed(1).replace(/\.0$/, '');
+    return price.toFixed(2);
+  },
+
+  ladder: [],
+
+  index(price) {
+    const p = this.snap(price);
+    let lo = 0, hi = this.ladder.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (this.ladder[mid] < p - 1e-9) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
+    }
+    return lo;
+  },
+
+  at(idx) {
+    const i = Math.min(Math.max(Math.round(idx), 0), this.ladder.length - 1);
+    return this.ladder[i];
+  }
+};
+
+// Build ladder
+(() => {
+  const out = [Ticks.minPrice];
+  while (out[out.length - 1] < Ticks.maxPrice) {
+    const last = out[out.length - 1];
+    out.push(Ticks._round(last + Ticks.increment(last)));
+  }
+  Ticks.ladder = out;
+})();
+
+const PriceAxis = {
+  _lo: Math.log(Ticks.minPrice),
+  _hi: Math.log(AppConfig.gridMaxPrice),
+  frac(price) {
+    const p = Math.min(Math.max(price, Ticks.minPrice), AppConfig.gridMaxPrice);
+    return Math.min(Math.max((this._hi - Math.log(p)) / (this._hi - this._lo), 0.0), 1.0);
+  },
+  offTop(price) {
+    return price > AppConfig.gridMaxPrice + 1e-9;
+  },
+  labels: [20, 15, 12, 10, 8, 7, 6, 5, 4.5, 4, 3.5, 3, 2.75, 2.5, 2.25, 2, 1.9, 1.8, 1.7, 1.6, 1.5, 1.4, 1.3, 1.2, 1.1, 1.01],
+  major: [20, 10, 5, 3, 2, 1.5, 1.2, 1.01]
+};
+
+function axisLabel(p) {
+  if (p >= 10 || p === Math.round(p)) return p.toFixed(0);
+  if (p === 1.01) return '1.01';
+  const s = p.toFixed(2);
+  return s.endsWith('0') ? s.slice(0, -1) : s;
+}
+
+function ordinal(n) {
+  if (n % 100 >= 11 && n % 100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+  }
+  return `${n}th`;
+}
+
+// ============================================================================
+// 3. POSITION, P&L, RANGE TRACKER & MOTION (Exact from lib/trading/*.dart)
+// ============================================================================
+function positionFor(selectionId, matches) {
+  let w = 0.0, l = 0.0;
+  for (const m of matches) {
+    if (m.selectionId !== selectionId) continue;
+    if (m.side === 'back') {
+      w += m.size * (m.price - 1);
+      l -= m.size;
+    } else {
+      w -= m.size * (m.price - 1);
+      l += m.size;
+    }
+  }
+  return {
+    ifWins: w,
+    ifLoses: l,
+    get flat() { return Math.abs(this.ifWins) < 0.005 && Math.abs(this.ifLoses) < 0.005; }
+  };
+}
+
+function bookPnl(selectionIds, matches) {
+  const out = {};
+  for (const id of selectionIds) {
+    let total = 0.0;
+    for (const m of matches) {
+      const wins = m.selectionId === id;
+      if (m.side === 'back') {
+        total += wins ? m.size * (m.price - 1) : -m.size;
+      } else {
+        total += wins ? -m.size * (m.price - 1) : m.size;
+      }
+    }
+    out[id] = total;
+  }
+  return out;
+}
+
+function hedgeFor(pos, book) {
+  const diff = pos.ifWins - pos.ifLoses;
+  if (Math.abs(diff) < 0.01) return null;
+  if (diff > 0) {
+    const p = book.bestLay;
+    if (p == null) return null;
+    const s = diff / p;
+    const r2 = Math.round(s * 100) / 100;
+    return { side: 'lay', price: p, stake: r2, result: pos.ifLoses + s };
+  } else {
+    const p = book.bestBack;
+    if (p == null) return null;
+    const s = -diff / p;
+    const r2 = Math.round(s * 100) / 100;
+    return { side: 'back', price: p, stake: r2, result: pos.ifLoses - s };
+  }
+}
+
+function hedgeWithOffset(pos, book, offsetTicks) {
+  const diff = pos.ifWins - pos.ifLoses;
+  if (Math.abs(diff) < 0.05) return null;
+  if (diff > 0) {
+    const best = book.bestLay;
+    if (best == null) return null;
+    const p = Ticks.at(Ticks.index(best) + offsetTicks);
+    const s = diff / p;
+    const r2 = Math.round(s * 100) / 100;
+    return { side: 'lay', price: p, stake: r2, result: pos.ifLoses + s };
+  } else {
+    const best = book.bestBack;
+    if (best == null) return null;
+    const p = Ticks.at(Ticks.index(best) - offsetTicks);
+    const s = -diff / p;
+    const r2 = Math.round(s * 100) / 100;
+    return { side: 'back', price: p, stake: r2, result: pos.ifLoses - s };
+  }
+}
+
+class RangeTracker {
+  constructor() {
+    this.lo = {};
+    this.hi = {};
+    this._inPlaySeen = false;
+  }
+  update(s) {
+    if (s.inPlay && !this._inPlaySeen) {
+      this._inPlaySeen = true;
+      this.lo = {};
+      this.hi = {};
+    }
+    for (const r of s.runners) {
+      const p = r.lastTraded;
+      if (p == null || !r.active) continue;
+      const cur = Ticks.snap(p);
+      this.lo[r.selectionId] = this.lo[r.selectionId] == null ? cur : Math.min(cur, this.lo[r.selectionId]);
+      this.hi[r.selectionId] = this.hi[r.selectionId] == null ? cur : Math.max(cur, this.hi[r.selectionId]);
+    }
+  }
+}
+
+class RunnerMotion {
+  constructor() {
+    this.velocity = 0;
+    this._lastIdx = null;
+    this._lastAt = null;
+  }
+  get direction() {
+    if (this.velocity <= -0.6) return 'steaming';
+    if (this.velocity >= 0.6) return 'drifting';
+    return 'flat';
+  }
+  get strength() {
+    return Math.min(Math.max(Math.abs(this.velocity) / 8.0, 0.0), 1.0);
+  }
+  add(idx, atMs) {
+    if (this._lastIdx != null && this._lastAt != null) {
+      const dt = (atMs - this._lastAt) / 1000.0;
+      if (dt > 0.01) {
+        const v = (idx - this._lastIdx) / dt;
+        const a = 1 - Math.exp(-dt / 0.8);
+        this.velocity += a * (v - this.velocity);
+      }
+    }
+    this._lastIdx = idx;
+    this._lastAt = atMs;
+  }
+}
+
+class MarketMotion {
+  constructor() {
+    this._m = {};
+  }
+  of(selId) {
+    if (!this._m[selId]) this._m[selId] = new RunnerMotion();
+    return this._m[selId];
+  }
+  update(s) {
+    for (const r of s.runners) {
+      if (!r.active) continue;
+      const b = r.bestBack, l = r.bestLay;
+      const mid = (b != null && l != null)
+        ? (Ticks.index(b) + Ticks.index(l)) / 2.0
+        : (r.lastTraded == null ? null : Ticks.index(r.lastTraded));
+      if (mid != null) this.of(r.selectionId).add(mid, s.receivedAt);
+    }
+  }
+  static lead(s) {
+    return s.inPlay ? Math.max(1, s.betDelay) : 0.3;
+  }
+  predictIdx(selId, price, leadSecs) {
+    return Ticks.index(price) + this.of(selId).velocity * leadSecs;
+  }
+}
+
+// ============================================================================
+// 4. SETTINGS & SIMULATED FEED (SimSource & _SimRace from lib/feeds/sim_source.dart)
+// ============================================================================
+const settings = {
+  stake: 5,
+  tapToTrade: true,
+  exitTicks: 13,
+  entryOffsetTicks: 2,
+  fireTogether: false,
+  stopLossTicks: 8,
+  trailingStop: true,
+  trailTicks: 7,
+  timedExit: true,
+  timedExitSecs: 10,
+  autoHedge: false
+};
+
+const HORSE_NAMES = [
+  'Copper Kettle', 'Night Lantern', 'Hollow Oak', 'Saltmarsh',
+  'Brass Monkey', 'Velvet Storm', 'Tinker Lane', 'Morning Ember',
+  'Quiet Harbour', 'Red Kite', 'Silver Thistle', 'Golden Sovereign',
+  'Midnight Express', 'Thunder Ridge', 'Celtic Whisper', 'Iron Duke'
+];
+
+const VENUES = [
+  'Ascot', 'Cheltenham', 'Newmarket', 'York',
+  'Goodwood', 'Sandown', 'Kempton', 'Doncaster', 'Leopardstown'
+];
+
+const RACE_DISTANCES = [
+  { id: '5f',   label: '5f Sprint',          furlongs: 5,  raceLen: 38,  volatility: 0.28, defaultRunners: 7, desc: 'Explosive pace · ~38s run' },
+  { id: '6f',   label: '6f Handicap Sprint', furlongs: 6,  raceLen: 46,  volatility: 0.25, defaultRunners: 8, desc: 'Fast & furious · ~46s run' },
+  { id: '1m',   label: '1m Mile Classic',    furlongs: 8,  raceLen: 60,  volatility: 0.22, defaultRunners: 7, desc: 'Balanced tactical · ~60s run' },
+  { id: '1m2f', label: '1m2f Championship',  furlongs: 10, raceLen: 75,  volatility: 0.21, defaultRunners: 8, desc: 'Mid-race swings · ~75s run' },
+  { id: '1m4f', label: '1m4f Middle Derby',  furlongs: 12, raceLen: 90,  volatility: 0.19, defaultRunners: 9, desc: 'Stamina test · ~90s run' },
+  { id: '2m',   label: '2m Stayers Cup',     furlongs: 16, raceLen: 115, volatility: 0.18, defaultRunners: 10, desc: 'Long grind & surge · ~115s' }
+];
+
+function fmtFurlongs(f) {
+  const whole = Math.round(f);
+  if (whole >= 8) {
+    const m = Math.floor(whole / 8), r = whole % 8;
+    return r === 0 ? `${m}m` : `${m}m${r}f`;
+  }
+  return `${whole}f`;
+}
+
+class SimRace {
+  constructor(market, initialSnapshotSetup = false) {
+    this.market = market;
+    this._logit = [];
+    this._track = [];
+    this._ltp = {};
+    this._orders = [];
+    this._nextId = 1;
+    this._preOff = initialSnapshotSetup ? 15.0 : 8.0;
+    this._raceLen = market.raceLen || 75.0;
+    this._volatility = market.volatility || 0.22;
+    this._lapsedAtOff = false;
+
+    const n = market.runners.length;
+    if (initialSnapshotSetup && n === 7) {
+      // Start right at 4s in-play matching the screenshot proportions!
+      this._t = this._preOff + 4.5;
+      this._lapsedAtOff = true;
+      // Runner #1 (1000): 4.40, #2 (1001): 2.48 (Fav), #3 (1002): 14, #4 (1003): 6.40, #5 (1004): 14, #6 (1005): 27, #7 (1006): 29
+      const targetPrices = [4.40, 2.48, 14.0, 6.40, 14.0, 27.0, 29.0];
+      const temp = 1 - 0.85 * this._raceT;
+      for (let i = 0; i < n; i++) {
+        const p = 1.0 / targetPrices[i];
+        this._logit.push(Math.log(p) * temp);
+      }
+      // Track positions so 1st=#2, 2nd=#1, 3rd=#4, 4th=#3, 5th=#5, 6th=#7, 7th=#6
+      this._track = [1.1, 1.45, 0.55, 0.85, 0.35, -0.15, 0.1];
+      this._winner = 1; // #2 favourite
+    } else {
+      this._t = 0;
+      for (let i = 0; i < n; i++) {
+        const l = -0.35 * i + Math.random() * 0.8;
+        this._logit.push(l);
+        this._track.push(l);
+      }
+      const p = this._probs(1);
+      let r = Math.random(), acc = 0, w = 0;
+      for (let i = 0; i < p.length; i++) {
+        acc += p[i];
+        if (r <= acc) { w = i; break; }
+      }
+      this._winner = w;
+    }
+  }
+
+  get inPlay() { return this._t >= this._preOff; }
+  get _raceT() { return Math.min(Math.max((this._t - this._preOff) / this._raceLen, 0.0), 1.0); }
+  get suspended() { return (this._t >= this._preOff - 1 && this._t < this._preOff) || (this._raceT >= 1 && !this.closed); }
+  get closed() { return this._t >= this._preOff + this._raceLen + 2.5; }
+
+  _probs(temp) {
+    const e = this._logit.map(l => Math.exp(l / temp));
+    const s = e.reduce((a, b) => a + b, 0);
+    return e.map(v => v / s);
+  }
+
+  step(dt) {
+    this._t += dt;
+    if (!this.inPlay) {
+      for (let i = 0; i < this._logit.length; i++) {
+        this._logit[i] += (Math.random() - 0.5) * 0.025;
+      }
+    } else if (this._raceT < 1) {
+      const rt = this._raceT;
+      for (let i = 0; i < this._logit.length; i++) {
+        this._logit[i] += (Math.random() - 0.5) * this._volatility;
+        if (i === this._winner) this._logit[i] += 0.11 * rt * rt * 2.5;
+        this._track[i] += 0.25 * (this._logit[i] - this._track[i]) + (Math.random() - 0.5) * 0.04;
+      }
+    } else {
+      // Ensure the designated winner finishes marginally ahead at the line
+      const maxOther = Math.max(...this._track.filter((_, idx) => idx !== this._winner));
+      if (this._track[this._winner] <= maxOther) {
+        this._track[this._winner] = maxOther + 0.15;
+      }
+    }
+    this._matchResting();
+  }
+
+  _price(i) {
+    const temp = this.inPlay ? (1 - 0.85 * this._raceT) : 1.0;
+    const p = Math.min(Math.max(this._probs(temp)[i], 0.001), 0.99);
+    return Ticks.snap(Math.min(Math.max(1.0 / p, 1.01), 1000));
+  }
+
+  _book(i) {
+    const sel = this.market.runners[i].selectionId;
+    const mid = this._price(i);
+    const back = mid;
+    const lay = Ticks.move(back, 1);
+    const sz = () => Math.round(6 + Math.random() * (this.inPlay ? 65 : 260));
+    if (Math.random() < 0.5 || !(sel in this._ltp)) {
+      this._ltp[sel] = Math.random() < 0.5 ? back : lay;
+    }
+    const finished = this._raceT >= 1;
+    const backs = finished ? [] : [0, 1, 2, 3, 4].map(k => ({ price: Ticks.move(back, -k), size: sz() }));
+    const lays = finished ? [] : [0, 1, 2, 3, 4].map(k => ({ price: Ticks.move(lay, k), size: sz() }));
+    return {
+      selectionId: sel,
+      active: true,
+      lastTraded: this._ltp[sel],
+      backs,
+      lays,
+      get bestBack() { return this.backs.length === 0 ? null : this.backs[0].price; },
+      get bestLay() { return this.lays.length === 0 ? null : this.lays[0].price; }
+    };
+  }
+
+  place(sel, side, price, size) {
+    const o = {
+      id: `S${this._nextId++}`,
+      sel,
+      side,
+      price,
+      size,
+      matched: 0,
+      cancelled: false,
+      get remaining() { return this.cancelled ? 0 : this.size - this.matched; }
+    };
+    this._orders.push(o);
+    this._matchOne(o);
+    return {
+      ok: true,
+      message: o.matched > 0 ? `Matched £${o.matched.toFixed(2)}` : 'Placed',
+      betId: o.id,
+      sizeMatched: o.matched
+    };
+  }
+
+  _matchOne(o) {
+    if (o.remaining <= 0 || this.suspended || this._raceT >= 1) return;
+    const i = this.market.runners.findIndex(r => r.selectionId === o.sel);
+    if (i < 0) return;
+    const b = this._book(i);
+    const ok = o.side === 'back'
+      ? (b.bestBack != null && o.price <= b.bestBack + 1e-9)
+      : (b.bestLay != null && o.price >= b.bestLay - 1e-9);
+    if (ok) o.matched = o.size;
+  }
+
+  _matchResting() {
+    for (const o of this._orders) {
+      this._matchOne(o);
+    }
+  }
+
+  cancel(ids) {
+    for (const o of this._orders) {
+      if (ids.includes(o.id) && o.remaining > 0) o.cancelled = true;
+    }
+  }
+
+  cancelAll() {
+    for (const o of this._orders) {
+      if (o.remaining > 0) o.cancelled = true;
+    }
+  }
+
+  _lengths() {
+    const lead = Math.max(...this._track);
+    const out = {};
+    for (let i = 0; i < this._track.length; i++) {
+      out[this.market.runners[i].selectionId] = Math.min(Math.max((lead - this._track[i]) * 3, 0.0), 30.0);
+    }
+    return out;
+  }
+
+  snapshot() {
+    if (this.inPlay && !this._lapsedAtOff) {
+      this._lapsedAtOff = true;
+      this.cancelAll();
+    }
+    const books = this.market.runners.map((_, i) => this._book(i));
+    const orders = this._orders.map(o => ({
+      betId: o.id,
+      selectionId: o.sel,
+      side: o.side,
+      price: o.price,
+      size: o.size,
+      sizeMatched: o.matched,
+      sizeRemaining: o.remaining,
+      complete: o.remaining <= 0,
+      avgPriceMatched: o.matched > 0 ? o.price : null
+    }));
+    const matches = this._orders.filter(o => o.matched > 0).map(o => ({
+      selectionId: o.sel,
+      side: o.side,
+      price: o.price,
+      size: o.matched
+    }));
+    return {
+      marketId: this.market.marketId,
+      status: this.closed ? 'closed' : this.suspended ? 'suspended' : 'open',
+      inPlay: this.inPlay,
+      betDelay: this.inPlay ? 1 : 0,
+      runners: books,
+      orders,
+      matches,
+      receivedAt: Date.now(),
+      lengthsBehind: this.inPlay ? this._lengths() : null,
+      runner(id) { return this.runners.find(r => r.selectionId === id) || null; }
+    };
+  }
+}
+
+// ============================================================================
+// 5. TRADE ENGINE (Exact from lib/trading/trade_engine.dart)
+// ============================================================================
+function greenStake(stake, entryPrice, exitPrice) {
+  return Math.round((stake * entryPrice / exitPrice) * 100) / 100;
+}
+
+function exitFrom(entrySide, entryPrice, exitTicks) {
+  const i = Ticks.index(entryPrice);
+  return Ticks.at(entrySide === 'back' ? i - exitTicks : i + exitTicks);
+}
+
+function planPrices(side, predictedIdx, offsetTicks, exitTicks) {
+  const base = Math.round(predictedIdx);
+  const entry = Ticks.at(side === 'back' ? base - offsetTicks : base + offsetTicks);
+  return { entry, exit: exitFrom(side, entry, exitTicks) };
+}
+
+class TradeEngine {
+  constructor(market, motion, onMessage) {
+    this.market = market;
+    this.motion = motion;
+    this.onMessage = onMessage;
+    this.trades = {};
+    this._snap = null;
+    this.pending = 0;
+  }
+
+  _cloth(sel) {
+    const r = this.market.runners.find(x => x.selectionId === sel);
+    return r ? `#${r.sortPriority}` : '#?';
+  }
+
+  async _place(sel, side, price, stake) {
+    this.pending++;
+    renderUI();
+    try {
+      if (currentRace.inPlay) {
+        await new Promise(r => setTimeout(r, 450));
+      }
+      return currentRace.place(sel, side, price, Math.round(stake * 100) / 100);
+    } finally {
+      this.pending--;
+      renderUI();
+    }
+  }
+
+  async enter(sel, side) {
+    const s = this._snap;
+    if (!s) return;
+    if (!armed || s.status !== 'open') {
+      this.onMessage(s.status !== 'open' ? 'Market not open' : 'Not live: tap ARM first', true);
+      return;
+    }
+    if (this.trades[sel]) {
+      this.onMessage(`${this._cloth(sel)} already in a trade: double-tap to hedge`, true);
+      return;
+    }
+    const book = s.runner(sel);
+    const base = side === 'back' ? book?.bestBack : book?.bestLay;
+    if (!book || base == null) {
+      this.onMessage(`No price on ${this._cloth(sel)}`, true);
+      return;
+    }
+    const pred = this.motion.predictIdx(sel, base, MarketMotion.lead(s));
+    const plan = planPrices(side, pred, settings.entryOffsetTicks, settings.exitTicks);
+    if (plan.entry > AppConfig.gridMaxPrice) {
+      this.onMessage(`Above ${Ticks.fmt(AppConfig.gridMaxPrice)}: no entry`, true);
+      return;
+    }
+    if (plan.entry === plan.exit) {
+      this.onMessage('No room for an exit at that price', true);
+      return;
+    }
+    const stake = settings.stake;
+    const t = {
+      selectionId: sel,
+      side,
+      stake,
+      entryPrice: plan.entry,
+      exitPrice: plan.exit,
+      openedAt: Date.now(),
+      matchedPrice: null,
+      baseline: positionFor(sel, s.matches).ifLoses,
+      entryBetId: null,
+      exitBetId: null,
+      entryCancelSent: false,
+      cancelRequested: false,
+      placedMatched: 0,
+      matchedAt: null,
+      stopIdx: null,
+      bestIdx: null,
+      hedging: false,
+      busy: true,
+      get exitSide() { return this.side === 'back' ? 'lay' : 'back'; },
+      get entryMatched() { return this.matchedAt != null; },
+      get stopPrice() { return this.stopIdx == null ? null : Ticks.at(this.stopIdx); },
+      secondsLeft(nowMs) {
+        if (!settings.autoHedge || !settings.timedExit || this.matchedAt == null || this.hedging) return null;
+        const left = settings.timedExitSecs - Math.floor((nowMs - this.matchedAt) / 1000);
+        return Math.max(0, left);
+      }
+    };
+    this.trades[sel] = t;
+    this.onMessage(`${side === 'back' ? 'Back' : 'Lay'} ${this._cloth(sel)} £${stake.toFixed(2)} @ ${Ticks.fmt(plan.entry)} → ${Ticks.fmt(plan.exit)}…`, false);
+
+    const res = await this._place(sel, side, plan.entry, stake);
+    t.busy = false;
+    if (!res.ok || !res.betId) {
+      delete this.trades[sel];
+      this.onMessage(`Entry rejected: ${res.message}`, true);
+      return;
+    }
+    t.entryBetId = res.betId;
+    t.placedMatched = res.sizeMatched;
+    if (t.cancelRequested) this.cancelEntry(sel);
+  }
+
+  entryOpen(sel) {
+    const t = this.trades[sel];
+    if (!t || t.hedging) return false;
+    if (!t.entryBetId) return true;
+    const o = this._snap?.orders.find(x => x.betId === t.entryBetId);
+    if (!o) return t.placedMatched < t.stake - 0.01;
+    return !o.complete;
+  }
+
+  cancelEntry(sel) {
+    const t = this.trades[sel];
+    if (!t) return;
+    if (!t.entryBetId) {
+      t.cancelRequested = true;
+      this.onMessage(`${this._cloth(sel)}: cancelling entry…`, false);
+      return;
+    }
+    if (t.entryCancelSent) return;
+    t.entryCancelSent = true;
+    this.onMessage(`${this._cloth(sel)}: cancelling entry…`, false);
+    currentRace.cancel([t.entryBetId]);
+  }
+
+  onSnapshot(s) {
+    this._snap = s;
+    for (const sel of Object.keys(this.trades)) {
+      const t = this.trades[sel];
+      if (t) this._manage(t, s);
+    }
+  }
+
+  _manage(t, s) {
+    if (t.busy || !t.entryBetId) return;
+    const now = Date.now();
+    const sel = t.selectionId;
+    const entry = s.orders.find(o => o.betId === t.entryBetId);
+    const matched = entry ? entry.sizeMatched : 0;
+    const entryDone = entry && entry.complete;
+    const pos = positionFor(sel, s.matches);
+    const level = Math.abs(pos.ifWins - pos.ifLoses) < 0.05;
+    const open = s.orders.filter(o => o.selectionId === sel && !o.complete && o.sizeRemaining > 0);
+
+    // Timeout unmatched entry
+    const limitMs = (s.betDelay + AppConfig.entryTimeoutSecs) * 1000;
+    if (entry && !entry.complete && !t.entryCancelSent && (now - t.openedAt) > limitMs) {
+      t.entryCancelSent = true;
+      currentRace.cancel([t.entryBetId]);
+    }
+
+    if (matched > 0 && t.matchedAt == null) {
+      t.matchedAt = now;
+      t.matchedPrice = entry?.avgPriceMatched ?? entry?.price ?? t.entryPrice;
+      if (!t.exitBetId) {
+        t.exitPrice = exitFrom(t.side, t.matchedPrice, settings.exitTicks);
+      }
+    }
+
+    if (entryDone && matched <= 0) {
+      if (t.exitBetId) currentRace.cancel([t.exitBetId]);
+      delete this.trades[sel];
+      this.onMessage(`${this._cloth(sel)}: entry not matched, cancelled`, false);
+      return;
+    }
+    if (matched <= 0) return;
+
+    if (entryDone && level && open.length === 0) {
+      const entryP = t.matchedPrice ?? t.entryPrice;
+      const exitP = t.exitPrice;
+      const side = t.side;
+      delete this.trades[sel];
+      const r = pos.ifLoses - t.baseline;
+      this.onMessage(`${this._cloth(sel)} closed ${r >= 0 ? '+' : '-'}£${Math.abs(r).toFixed(2)}`, r < 0);
+      triggerExitMatched(sel, side, entryP, exitP);
+      return;
+    }
+
+    if (s.status !== 'open') return;
+
+    // Place exit order once entry fills
+    if (entryDone && !t.exitBetId && !level && !t.hedging) {
+      const diff = pos.ifWins - pos.ifLoses;
+      const stake = Math.abs(diff) / t.exitPrice;
+      const side = diff > 0 ? 'lay' : 'back';
+      const res = currentRace.place(sel, side, t.exitPrice, Math.round(stake * 100) / 100);
+      t.exitBetId = res.betId || 'none';
+    }
+
+    if (!settings.autoHedge) return;
+
+    // Stop loss / trailing stop
+    const book = s.runner(sel);
+    const close = t.side === 'back' ? book?.bestLay : book?.bestBack;
+    if (settings.stopLossTicks > 0 && close != null) {
+      const ci = Ticks.index(close);
+      const ei = Ticks.index(t.matchedPrice ?? t.entryPrice);
+      if (t.side === 'back') {
+        if (t.stopIdx == null) t.stopIdx = ei + settings.stopLossTicks;
+        t.bestIdx = t.bestIdx == null || ci < t.bestIdx ? ci : t.bestIdx;
+        if (settings.trailingStop && t.bestIdx + settings.trailTicks < t.stopIdx) {
+          t.stopIdx = t.bestIdx + settings.trailTicks;
+        }
+        if (ci >= t.stopIdx) {
+          this.hedge(sel, 'stop');
+          return;
+        }
+      } else {
+        if (t.stopIdx == null) t.stopIdx = ei - settings.stopLossTicks;
+        t.bestIdx = t.bestIdx == null || ci > t.bestIdx ? ci : t.bestIdx;
+        if (settings.trailingStop && t.bestIdx - settings.trailTicks > t.stopIdx) {
+          t.stopIdx = t.bestIdx - settings.trailTicks;
+        }
+        if (ci <= t.stopIdx) {
+          this.hedge(sel, 'stop');
+          return;
+        }
+      }
+    }
+
+    if (settings.timedExit && (now - t.matchedAt) >= settings.timedExitSecs * 1000) {
+      this.hedge(sel, 'time');
+    }
+  }
+
+  async hedge(sel, reason = 'manual') {
+    const s = this._snap;
+    if (!s || s.status !== 'open') {
+      this.onMessage("Can't hedge: market not open", true);
+      return;
+    }
+    const t = this.trades[sel];
+    if (t) t.hedging = true;
+
+    const openIds = s.orders.filter(o => o.selectionId === sel && !o.complete).map(o => o.betId);
+    if (openIds.length > 0) currentRace.cancel(openIds);
+
+    const snapNow = currentRace.snapshot();
+    const book = snapNow.runner(sel);
+    if (!book) return;
+    const h = hedgeWithOffset(positionFor(sel, snapNow.matches), book, settings.entryOffsetTicks);
+    if (!h) {
+      if (t) delete this.trades[sel];
+      this.onMessage(`${this._cloth(sel)}: nothing to hedge`, false);
+      return;
+    }
+    const why = reason === 'stop' ? 'Stop hit' : reason === 'time' ? 'Time up' : 'Hedge';
+    this.onMessage(`${why} ${this._cloth(sel)}: ${h.side} £${h.stake.toFixed(2)} @ ${Ticks.fmt(h.price)}…`, false);
+    await this._place(sel, h.side, h.price, h.stake);
+  }
+
+  async hedgeAll() {
+    const s = this._snap;
+    if (!s) return;
+    const sels = new Set([
+      ...Object.keys(this.trades).map(Number),
+      ...s.matches.map(m => m.selectionId)
+    ]);
+    const todo = [...sels].filter(sel => {
+      const pos = positionFor(sel, s.matches);
+      return this.trades[sel] || Math.abs(pos.ifWins - pos.ifLoses) >= 0.05;
+    });
+    if (todo.length === 0) {
+      this.onMessage('Nothing to hedge', false);
+      return;
+    }
+    await Promise.all(todo.map(sel => this.hedge(sel)));
+  }
+
+  greenAll(s) {
+    if (!s || s.matches.length === 0) return null;
+    const sels = new Set(s.matches.map(m => m.selectionId));
+    let total = 0.0;
+    for (const sel of sels) {
+      const pos = positionFor(sel, s.matches);
+      const b = s.runner(sel);
+      const h = b ? hedgeFor(pos, b) : null;
+      total += h ? h.result : pos.ifLoses;
+    }
+    return total;
+  }
+
+  tradeGreen(s, t) {
+    if (!t.entryMatched) return null;
+    const pos = positionFor(t.selectionId, s.matches);
+    if (pos.flat) return null;
+    const b = s.runner(t.selectionId);
+    const h = b ? hedgeFor(pos, b) : null;
+    const g = h ? h.result : pos.ifLoses;
+    return g - t.baseline;
+  }
+}
+
+// ============================================================================
+// 6. CAREER BANKROLL, RACE CARD & POST-RACE SETTLEMENT
+// ============================================================================
+const CAREER_STORAGE_KEY = 'inplay_trader_career_v1';
+const DEFAULT_BANKROLL = 100.0;
+
+let career = {
+  bankroll: DEFAULT_BANKROLL,
+  startingBankroll: DEFAULT_BANKROLL,
+  racesCompleted: 0,
+  racesWon: 0,
+  bestRacePnl: 0,
+  history: [] // [{ title, distance, winnerCloth, winnerName, pnl, status }]
+};
+
+function loadCareer() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(CAREER_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed.bankroll === 'number') {
+          career = { ...career, ...parsed };
+        }
+      }
+    }
+  } catch (_) {}
+}
+
+function saveCareer() {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CAREER_STORAGE_KEY, JSON.stringify(career));
+    }
+  } catch (_) {}
+}
+
+function resetCareer() {
+  career = {
+    bankroll: DEFAULT_BANKROLL,
+    startingBankroll: DEFAULT_BANKROLL,
+    racesCompleted: 0,
+    racesWon: 0,
+    bestRacePnl: 0,
+    history: []
+  };
+  saveCareer();
+  renderUI();
+}
+
+loadCareer();
+
+let dailyCard = [];
+let currentCardIdx = 0;
+
+function generateDailyCard() {
+  const now = new Date();
+  let mins = now.getHours() * 60 + now.getMinutes();
+  dailyCard = RACE_DISTANCES.map((dist, idx) => {
+    const m = mins + idx * 12;
+    const hh = String(Math.floor((m / 60) % 24)).padStart(2, '0');
+    const mm = String(m % 60).padStart(2, '0');
+    const venue = VENUES[(idx + Math.floor(Math.random() * 3)) % VENUES.length];
+    return {
+      cardIndex: idx,
+      time: `${hh}:${mm}`,
+      venue,
+      distanceId: dist.id,
+      distanceLabel: dist.label,
+      furlongs: dist.furlongs,
+      raceLen: dist.raceLen,
+      volatility: dist.volatility,
+      nRunners: dist.defaultRunners,
+      desc: dist.desc
+    };
+  });
+}
+
+generateDailyCard();
+
+let currentMarket = null;
+let currentRace = null;
+let ranges = null;
+let motion = null;
+let engine = null;
+let columnOrder = null;
+let orderAtOff = false;
+let armed = true;
+let statusMsg = 'Lay #3 £5.00 @ 13 → 19.5…';
+let statusBad = false;
+let offAtMs = null;
+let lastTapId = null;
+let lastTapAt = 0;
+let raceSettled = false;
+let hitColumns = []; // [{ id, left, top, width, height, isFat }]
+const matchedExitLines = {}; // selectionId -> { side, entry, exit, exitMatchedGlow: true }
+
+function triggerExitMatched(sel, side, entry, exit) {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    try { navigator.vibrate([70, 50, 90]); } catch (_) {}
+  }
+  matchedExitLines[sel] = { side, entry, exit, exitMatchedGlow: true };
+  renderUI();
+  setTimeout(() => {
+    delete matchedExitLines[sel];
+    renderUI();
+  }, 1500);
+}
+
+function setStatus(msg, bad = false) {
+  statusMsg = msg;
+  statusBad = bad;
+  renderUI();
+}
+
+function hideResultModal() {
+  const modal = document.getElementById('raceResultModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function settleFinishedRace(s) {
+  if (raceSettled || !currentMarket || !currentRace) return;
+  raceSettled = true;
+
+  // Determine podium finishers (1st, 2nd, 3rd) by lengthsBehind or _track
+  const lengths = currentRace._lengths();
+  const sortedIds = Object.entries(lengths)
+    .sort((a, b) => a[1] - b[1])
+    .map(([k]) => Number(k));
+
+  const winnerId = sortedIds[0] ?? currentMarket.runners[currentRace._winner]?.selectionId;
+  const hasBets = s.matches.length > 0;
+  const pnlMap = hasBets ? bookPnl(currentMarket.runners.map(r => r.selectionId), s.matches) : {};
+  const racePnl = hasBets ? (pnlMap[winnerId] ?? 0.0) : 0.0;
+
+  // Determine if book was hedged, open, or no bets
+  let statusTag = 'NO BETS';
+  let statusBg = 'rgba(139,147,161,0.16)';
+  let statusCol = AppColors.muted;
+  if (hasBets) {
+    const vals = Object.values(pnlMap);
+    const maxDiff = Math.max(...vals) - Math.min(...vals);
+    if (maxDiff < 0.15) {
+      statusTag = 'HEDGED (GREENED)';
+      statusBg = 'rgba(61,220,132,0.16)';
+      statusCol = AppColors.profit;
+    } else {
+      statusTag = 'UNHEDGED';
+      statusBg = 'rgba(245,166,35,0.16)';
+      statusCol = AppColors.amber;
+    }
+  }
+
+  // Update career stats if bets were placed (or count completed race)
+  career.bankroll = Math.round((career.bankroll + racePnl) * 100) / 100;
+  career.racesCompleted += 1;
+  if (racePnl > 0.005) career.racesWon += 1;
+  if (racePnl > career.bestRacePnl) career.bestRacePnl = Math.round(racePnl * 100) / 100;
+
+  const winnerRunner = currentMarket.runners.find(r => r.selectionId === winnerId) || currentMarket.runners[0];
+  career.history.unshift({
+    title: currentMarket.title,
+    distance: fmtFurlongs(currentMarket.furlongs || 10),
+    winnerCloth: winnerRunner.sortPriority,
+    winnerName: winnerRunner.name,
+    pnl: Math.round(racePnl * 100) / 100,
+    status: statusTag
+  });
+  if (career.history.length > 15) career.history.length = 15;
+  saveCareer();
+
+  if (typeof navigator !== 'undefined' && navigator.vibrate) {
+    try { navigator.vibrate(racePnl >= 0 ? [80, 60, 120] : [180]); } catch (_) {}
+  }
+
+  // Populate Post-Race Results Modal
+  const titleEl = document.getElementById('resRaceTitle');
+  const tagEl = document.getElementById('resStatusTag');
+  const podiumEl = document.getElementById('resPodium');
+  const racePnlEl = document.getElementById('resRacePnl');
+  const bankrollEl = document.getElementById('resBankroll');
+  const careerSubEl = document.getElementById('resCareerSub');
+  const modalEl = document.getElementById('raceResultModal');
+
+  if (titleEl) titleEl.textContent = `${currentMarket.title} · ${currentMarket.name}`;
+  if (tagEl) {
+    tagEl.textContent = statusTag;
+    tagEl.style.background = statusBg;
+    tagEl.style.color = statusCol;
+  }
+
+  if (podiumEl) {
+    const podiumRunners = sortedIds.slice(0, 3).map((id, idx) => {
+      const r = currentMarket.runners.find(x => x.selectionId === id);
+      const b = lengths[id] ?? 0;
+      const ifWins = hasBets ? (pnlMap[id] ?? 0) : null;
+      const medals = ['🥇 1st', '🥈 2nd', '🥉 3rd'];
+      return `
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:12.5px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:800; color:${idx === 0 ? AppColors.shortGold : AppColors.text2}; min-width:44px;">${medals[idx]}</span>
+            <span style="font-weight:700; color:#FFFFFF;">#${r ? r.sortPriority : '?'} ${r ? r.name : ''}</span>
+          </div>
+          <div class="tabular" style="font-size:11.5px; font-weight:700; color:${ifWins == null ? AppColors.muted : (ifWins >= 0 ? AppColors.profit : AppColors.loss)};">
+            ${idx === 0 ? 'WINNER' : `${b.toFixed(1)}L behind`}
+            ${ifWins != null ? ` · ${ifWins >= 0 ? '+' : '-'}£${Math.abs(ifWins).toFixed(2)}` : ''}
+          </div>
+        </div>
+      `;
+    });
+    podiumEl.innerHTML = podiumRunners.join('');
+  }
+
+  if (racePnlEl) {
+    const sign = racePnl >= 0 ? '+' : '-';
+    racePnlEl.textContent = `${sign}£${Math.abs(racePnl).toFixed(2)}`;
+    racePnlEl.style.color = racePnl > 0.005 ? AppColors.profit : racePnl < -0.005 ? AppColors.loss : AppColors.text2;
+  }
+
+  if (bankrollEl) {
+    bankrollEl.textContent = `£${career.bankroll.toFixed(2)}`;
+  }
+
+  if (careerSubEl) {
+    const careerNet = career.bankroll - career.startingBankroll;
+    const cSign = careerNet >= 0 ? '+' : '-';
+    careerSubEl.textContent = `Career: ${cSign}£${Math.abs(careerNet).toFixed(2)} · ${career.racesWon}/${career.racesCompleted} won`;
+  }
+
+  if (modalEl) modalEl.classList.remove('hidden');
+}
+
+function startInitialScreenshotRace() {
+  hideResultModal();
+  raceSettled = false;
+  const n = 7;
+  currentMarket = {
+    marketId: 'SIM.1',
+    name: '1m2f Championship',
+    venue: 'Ascot',
+    title: '15:37 Ascot · 1m2f',
+    furlongs: 10,
+    raceLen: 75,
+    volatility: 0.21,
+    runners: Array.from({ length: n }, (_, i) => ({
+      selectionId: 1000 + i,
+      name: HORSE_NAMES[i],
+      sortPriority: i + 1
+    }))
+  };
+
+  currentRace = new SimRace(currentMarket, true);
+  ranges = new RangeTracker();
+  motion = new MarketMotion();
+  engine = new TradeEngine(currentMarket, motion, setStatus);
+
+  // Fixed column order matching screenshot:
+  // Rightmost 4 favourites: #2 (1001), #1 (1000), #3 (1002), #4 (1003)
+  // Left 3 thin columns: #5 (1004), #6 (1005), #7 (1006)
+  columnOrder = [1001, 1000, 1002, 1003, 1004, 1005, 1006];
+  orderAtOff = true;
+  armed = true;
+  offAtMs = Date.now() - 4500;
+
+  // Seed ranges & velocities to match screenshot visuals:
+  // #2 (1001, 1st): gold range from 2.48 to 5.1, steaming blue
+  ranges._inPlaySeen = true;
+  ranges.lo = { 1001: 2.48, 1000: 3.75, 1002: 8.4, 1003: 6.40, 1004: 9.2, 1005: 15.0, 1006: 22.0 };
+  ranges.hi = { 1001: 5.10, 1000: 5.50, 1002: 15.5, 1003: 9.60, 1004: 14.5, 1005: 28.0, 1006: 30.0 };
+
+  motion.of(1001).velocity = -3.2; // steaming blue
+  motion.of(1000).velocity = 2.8;  // drifting salmon
+  motion.of(1002).velocity = 3.5;  // drifting salmon
+  motion.of(1003).velocity = -2.4; // steaming blue
+  motion.of(1004).velocity = 2.0;  // drifting salmon
+  motion.of(1005).velocity = -2.2; // steaming blue
+  motion.of(1006).velocity = 0.0;  // flat
+
+  // Place matched LAY #3 (selectionId 1002) £5 @ 13 -> 19.5 so whole-book P&L is +£5.00 / -£60.00 and green is +£0.36
+  const o = {
+    id: 'S1',
+    sel: 1002,
+    side: 'lay',
+    price: 13.0,
+    size: 5.0,
+    matched: 5.0,
+    cancelled: false,
+    remaining: 0
+  };
+  currentRace._orders.push(o);
+  const exitOrder = {
+    id: 'S2',
+    sel: 1002,
+    side: 'back',
+    price: 19.5,
+    size: 3.33,
+    matched: 0,
+    cancelled: false,
+    remaining: 3.33
+  };
+  currentRace._orders.push(exitOrder);
+
+  engine.trades[1002] = {
+    selectionId: 1002,
+    side: 'lay',
+    stake: 5.0,
+    entryPrice: 13.0,
+    exitPrice: 19.5,
+    openedAt: Date.now() - 2000,
+    matchedPrice: 13.0,
+    baseline: 0,
+    entryBetId: 'S1',
+    exitBetId: 'S2',
+    entryCancelSent: false,
+    cancelRequested: false,
+    placedMatched: 5.0,
+    matchedAt: Date.now() - 1800,
+    stopIdx: Ticks.index(13.0) - settings.stopLossTicks,
+    bestIdx: Ticks.index(14.0),
+    hedging: false,
+    busy: false,
+    get exitSide() { return 'back'; },
+    get entryMatched() { return true; },
+    get stopPrice() { return Ticks.at(this.stopIdx); },
+    secondsLeft(nowMs) {
+      if (!settings.autoHedge || !settings.timedExit || this.matchedAt == null || this.hedging) return null;
+      return Math.max(0, settings.timedExitSecs - Math.floor((nowMs - this.matchedAt) / 1000));
+    }
+  };
+
+  const snap = currentRace.snapshot();
+  ranges.update(snap);
+  engine.onSnapshot(snap);
+  renderUI();
+  setTimeout(triggerInPlayFlash, 150);
+}
+
+let _flashTimer = null;
+function triggerInPlayFlash() {
+  const el = document.getElementById('inPlayFlashOverlay');
+  if (!el) return;
+  if (_flashTimer) clearTimeout(_flashTimer);
+  el.style.transition = 'opacity 100ms ease-out';
+  el.style.opacity = '1';
+  _flashTimer = setTimeout(() => {
+    el.style.transition = 'opacity 480ms ease-out';
+    el.style.opacity = '0';
+  }, 260);
+}
+
+function startNewPracticeRace(options = {}) {
+  hideResultModal();
+  raceSettled = false;
+  const distPreset = (typeof options === 'object' && options.distanceId)
+    ? (RACE_DISTANCES.find(d => d.id === options.distanceId) || RACE_DISTANCES[3])
+    : RACE_DISTANCES[3];
+  const nRunners = typeof options === 'number'
+    ? options
+    : (options.nRunners || distPreset.defaultRunners || 7);
+  const venue = options.venue || VENUES[Math.floor(Math.random() * VENUES.length)];
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const timeStr = options.time || `${hh}:${mm}`;
+
+  currentMarket = {
+    marketId: 'SIM.' + Math.floor(Math.random() * 900 + 100),
+    name: distPreset.label,
+    venue,
+    title: `${timeStr} ${venue} · ${distPreset.id}`,
+    furlongs: distPreset.furlongs,
+    raceLen: distPreset.raceLen,
+    volatility: distPreset.volatility,
+    runners: Array.from({ length: nRunners }, (_, i) => ({
+      selectionId: 1000 + i,
+      name: HORSE_NAMES[i % HORSE_NAMES.length],
+      sortPriority: i + 1
+    }))
+  };
+  currentRace = new SimRace(currentMarket, false);
+  ranges = new RangeTracker();
+  motion = new MarketMotion();
+  engine = new TradeEngine(currentMarket, motion, setStatus);
+  columnOrder = null;
+  orderAtOff = false;
+  offAtMs = null;
+  statusMsg = '';
+  statusBad = false;
+  const snap = currentRace.snapshot();
+  onNewSnapshot(snap);
+}
+
+function nextCardRace() {
+  currentCardIdx = (currentCardIdx + 1) % dailyCard.length;
+  const r = dailyCard[currentCardIdx];
+  startNewPracticeRace(r);
+}
+
+function byPrice(s) {
+  function p(id) {
+    const b = s.runner(id);
+    if (!b || !b.active) return null;
+    return b.lastTraded ?? b.bestBack;
+  }
+  const ids = currentMarket.runners.map(r => r.selectionId);
+  const priced = ids.filter(id => p(id) != null).sort((a, b) => p(a) - p(b));
+  if (priced.length === 0) return [];
+  return [...priced, ...ids.filter(id => p(id) == null)];
+}
+
+function onNewSnapshot(s) {
+  ranges.update(s);
+  motion.update(s);
+  if (s.inPlay && offAtMs == null) {
+    offAtMs = Date.now();
+    triggerInPlayFlash();
+  }
+  if (!columnOrder || (s.inPlay && !orderAtOff)) {
+    const o = byPrice(s);
+    if (o.length > 0) {
+      columnOrder = o;
+      if (s.inPlay) orderAtOff = true;
+    }
+  }
+  engine.onSnapshot(s);
+  if (s.status === 'closed' && !raceSettled) {
+    settleFinishedRace(s);
+  }
+  renderUI();
+}
+
+// ============================================================================
+// 7. RENDERING (Exact match to Flutter CustomPainters & Widgets)
+// ============================================================================
+function renderUI() {
+  const s = engine?._snap;
+  if (!s || !currentMarket) return;
+
+  // 1. TopBar
+  document.getElementById('uiMarketTitle').textContent = currentMarket.title;
+  document.getElementById('uiMarketSub').textContent = `${currentMarket.runners.length} runners · ${currentMarket.name}`;
+
+  const bankrollPill = document.getElementById('uiBankrollPill');
+  if (bankrollPill) {
+    bankrollPill.textContent = `£${career.bankroll.toFixed(2)}`;
+    const net = career.bankroll - career.startingBankroll;
+    bankrollPill.style.color = net > 0.01 ? AppColors.profit : net < -0.01 ? AppColors.loss : AppColors.leader;
+  }
+
+  const badge = document.getElementById('uiStatusBadge');
+  let bText = 'PRE-OFF', bCol = AppColors.back;
+  if (s.status === 'closed') { bText = 'CLOSED'; bCol = AppColors.muted; }
+  else if (s.status === 'suspended') { bText = 'SUSPENDED'; bCol = AppColors.leader; }
+  else if (s.inPlay) { bText = 'IN-PLAY'; bCol = AppColors.profit; }
+  badge.textContent = bText;
+  badge.style.color = bCol;
+  badge.style.borderColor = bCol;
+
+  document.getElementById('uiDelayBadge').textContent = `delay ${s.betDelay}s`;
+
+  // 2. Column Data & Ranking
+  const runners = currentMarket.runners;
+  const live = byPrice(s);
+  const favRank = {};
+  live.forEach((id, idx) => { favRank[id] = idx + 1; });
+  const favId = live.length > 0 ? live[0] : null;
+
+  const byId = {};
+  runners.forEach(r => { byId[r.selectionId] = r; });
+  const fixedIds = columnOrder || runners.map(r => r.selectionId);
+  const ordered = fixedIds.map(id => byId[id]).filter(Boolean);
+
+  const hasBets = s.matches.length > 0;
+  const pnl = hasBets ? bookPnl(runners.map(r => r.selectionId), s.matches) : {};
+
+  function statusOf(id) {
+    if (!hasBets) return '';
+    const p = positionFor(id, s.matches);
+    if (p.flat) return '';
+    return Math.abs(p.ifWins - p.ifLoses) >= 0.05 ? 'OPEN' : 'HEDGED';
+  }
+
+  const lengths = s.lengthsBehind;
+  const posOf = {};
+  if (lengths) {
+    const entries = Object.entries(lengths).sort((a, b) => a[1] - b[1]);
+    entries.forEach(([k], idx) => { posOf[Number(k)] = idx + 1; });
+  }
+
+  function makeColData(r) {
+    const id = r.selectionId;
+    const b = s.runner(id);
+    const t = engine.trades[id];
+    const base = b?.lastTraded ?? b?.bestBack;
+    const pred = (s.inPlay && base != null)
+      ? Ticks.at(motion.predictIdx(id, base, MarketMotion.lead(s)))
+      : null;
+    const p = posOf[id];
+    const f = favRank[id];
+    return {
+      runner: r,
+      book: b,
+      lo: ranges.lo[id],
+      hi: ranges.hi[id],
+      motion: motion.of(id),
+      predicted: pred,
+      position: p != null ? ordinal(p) : (f == null ? '–' : `F${f}`),
+      favourite: id === favId,
+      pnlIfWins: pnl[id],
+      status: statusOf(id),
+      trade: t
+        ? { side: t.side, entry: t.matchedPrice ?? t.entryPrice, exit: t.exitPrice, exitMatchedGlow: false }
+        : (matchedExitLines[id] || null),
+      get id() { return this.runner.selectionId; },
+      get ltp() { return this.book?.lastTraded ?? this.book?.bestBack; },
+      get shortOdds() { const p = this.ltp; return p != null && p <= 3.0; }
+    };
+  }
+
+  const favCols = ordered.slice(0, 4).map(makeColData);
+  const otherCols = ordered.slice(4).map(makeColData);
+
+  // Top Gesture Hint bar at the very top of screen
+  const topHintEl = document.getElementById('uiTopGestureHint');
+  if (topHintEl) {
+    topHintEl.innerHTML = `
+      ${settings.tapToTrade ? `<span><span style="color:#FFFFFF;">TAP: </span><span style="color:${AppColors.backText};">BLUE BACK</span><span style="color:#FFFFFF;"> / </span><span style="color:${AppColors.layText};">SALMON LAY</span></span>` : ''}
+      <span style="color:${AppColors.layText};">↑ LAY</span>
+      <span style="color:${AppColors.backText};">↓ BACK</span>
+      <span style="color:${AppColors.profit};">👆 2× TAP HEDGE</span>
+    `;
+  }
+
+  // 3. RaceProgressBar
+  const expectedMs = (currentMarket.raceLen || 75) * 1000;
+  const elapsedSecs = offAtMs == null ? 0 : Math.max(0, Math.floor((Date.now() - offAtMs) / 1000));
+  const progress = s.inPlay
+    ? (s.status === 'closed' ? 1.0 : Math.min(Math.max((Date.now() - offAtMs) / expectedMs, 0.0), 0.99))
+    : null;
+
+  const progressRunners = ordered.map((r, i) => ({
+    cloth: r.sortPriority,
+    behind: lengths ? (lengths[r.selectionId] ?? i) : i,
+    favourite: r.selectionId === favId,
+    topThree: i < 4
+  }));
+
+  renderProgressBar(progress, elapsedSecs, progressRunners, currentMarket.furlongs);
+
+  // 4. TradeTicket
+  renderTradeTicket(s);
+
+  // 5. ARM / HEDGE ALL buttons
+  const green = engine.greenAll(s);
+  const canHedge = s.status === 'open' && green != null;
+  const btnArm = document.getElementById('btnArm');
+  const armDot = document.getElementById('armDot');
+  const armLabel = document.getElementById('armLabel');
+
+  if (armed) {
+    btnArm.style.background = '#3A1D1D';
+    armDot.style.background = AppColors.loss;
+    armLabel.textContent = 'LIVE';
+    armLabel.style.color = AppColors.loss;
+  } else {
+    btnArm.style.background = '#232934';
+    armDot.style.background = AppColors.muted;
+    armLabel.textContent = 'ARM';
+    armLabel.style.color = '#FFFFFF';
+  }
+
+  const btnHedge = document.getElementById('btnHedgeAll');
+  btnHedge.style.background = canHedge ? AppColors.profit : rgba(AppColors.profit, 0.25);
+  btnHedge.style.cursor = canHedge ? 'pointer' : 'default';
+
+  // 6. TradingGrid Canvas
+  let maxSize = 50.0;
+  for (const c of favCols) {
+    if (c.book) {
+      for (const ps of [...c.book.backs, ...c.book.lays]) {
+        if (ps.size > maxSize) maxSize = ps.size;
+      }
+    }
+  }
+  renderTradingGridCanvas(favCols, otherCols, maxSize);
+}
+
+function lerpHex(c1, c2, t) {
+  const n1 = parseInt(c1.slice(1), 16);
+  const n2 = parseInt(c2.slice(1), 16);
+  const r = Math.round(((n1 >> 16) & 255) + (((n2 >> 16) & 255) - ((n1 >> 16) & 255)) * t);
+  const g = Math.round(((n1 >> 8) & 255) + (((n2 >> 8) & 255) - ((n1 >> 8) & 255)) * t);
+  const b = Math.round((n1 & 255) + ((n2 & 255) - (n1 & 255)) * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function progressColourFor(p) {
+  const amberAt = 0.6, redAt = 0.85;
+  const clamped = Math.min(Math.max(p, 0.0), 1.0);
+  if (clamped <= amberAt) {
+    return lerpHex(AppColors.profit, AppColors.amber, clamped / amberAt);
+  }
+  return lerpHex(
+    AppColors.amber,
+    AppColors.loss,
+    Math.min(Math.max((clamped - amberAt) / (redAt - amberAt), 0.0), 1.0)
+  );
+}
+
+function renderProgressBar(progress, elapsedSecs, runners, furlongs) {
+  const elText = document.getElementById('uiElapsedText');
+  const rightText = document.getElementById('uiProgressRight');
+  const mm = Math.floor(elapsedSecs / 60);
+  const ss = String(elapsedSecs % 60).padStart(2, '0');
+
+  if (progress == null) {
+    const remPre = currentRace ? Math.max(0, Math.ceil(currentRace._preOff - currentRace._t)) : 0;
+    elText.textContent = `Pre-off (${remPre}s to off)`;
+    rightText.textContent = furlongs ? `${fmtFurlongs(furlongs)} · waiting for the off` : 'Waiting for the off';
+    rightText.style.color = AppColors.muted;
+  } else {
+    elText.textContent = `${mm}:${ss} elapsed`;
+    if (furlongs) {
+      const run = furlongs * progress;
+      rightText.textContent = `${fmtFurlongs(run)} run · ${fmtFurlongs(furlongs - run)} to go`;
+    } else {
+      rightText.textContent = `${Math.round(progress * 100)}% run`;
+    }
+    rightText.style.color = progressColourFor(progress);
+  }
+
+  const canvas = document.getElementById('progressCanvas');
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const w = rect.width || 380;
+  const h = rect.height || 44;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const barY = 21.0;
+  const amberAt = 0.6, redAt = 0.85;
+
+  // Background track: smooth blend from green -> orange -> red (alpha 0.22)
+  const bgGrad = ctx.createLinearGradient(0, 0, w, 0);
+  bgGrad.addColorStop(0.0, rgba(AppColors.profit, 0.22));
+  bgGrad.addColorStop(amberAt, rgba(AppColors.amber, 0.22));
+  bgGrad.addColorStop(redAt, rgba(AppColors.loss, 0.22));
+  bgGrad.addColorStop(1.0, rgba(AppColors.loss, 0.22));
+  roundRectPath(ctx, 0, barY, w, 6, 3);
+  ctx.fillStyle = bgGrad;
+  ctx.fill();
+
+  // Filled portion: smooth blend from green -> orange -> red
+  const p = progress ?? 0;
+  if (p > 0) {
+    ctx.save();
+    roundRectPath(ctx, 0, barY, w * p, 6, 3);
+    ctx.clip();
+    const fillGrad = ctx.createLinearGradient(0, 0, w, 0);
+    fillGrad.addColorStop(0.0, AppColors.profit);
+    fillGrad.addColorStop(amberAt, AppColors.amber);
+    fillGrad.addColorStop(redAt, AppColors.loss);
+    fillGrad.addColorStop(1.0, AppColors.loss);
+    ctx.fillStyle = fillGrad;
+    ctx.fillRect(0, barY, w, 6);
+    ctx.restore();
+  }
+
+  // Finish post
+  ctx.fillStyle = AppColors.loss;
+  ctx.fillRect(w - 4, barY - 3, 4, 12);
+
+  // Runner Dots
+  const fill = p * w;
+  const step = Math.max(10.0, w * 0.035);
+  const sorted = [...runners].sort((a, b) => a.behind - b.behind);
+
+  sorted.forEach((r, i) => {
+    const x = Math.min(Math.max(fill - r.behind * step, 0.0), w - 15);
+    const above = (i % 2 === 0);
+    const top = above ? barY - 18 : barY + 8;
+    const cx = x - 1 + 7.5;
+    const cy = top + 7.5;
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, 7.5, 0, Math.PI * 2);
+    ctx.fillStyle = r.favourite ? AppColors.leader : r.topThree ? '#1C222B' : '#3A4352';
+    ctx.fill();
+
+    if (r.topThree && !r.favourite) {
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = '#E8EAED';
+      ctx.stroke();
+    }
+
+    ctx.fillStyle = r.favourite ? AppColors.bg : AppColors.text2;
+    ctx.font = '800 9px Roboto, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(r.cloth), cx, cy + 0.5);
+  });
+}
+
+function renderTradeTicket(s) {
+  const rowsEl = document.getElementById('uiTicketRows');
+  const trades = Object.values(engine.trades).slice(0, 3);
+  const now = Date.now();
+  rowsEl.innerHTML = '';
+
+  for (const t of trades) {
+    const r = currentMarket.runners.find(x => x.selectionId === t.selectionId);
+    const cloth = r ? r.sortPriority : '?';
+    const isBack = t.side === 'back';
+    const g = engine.tradeGreen(s, t);
+    const left = t.secondsLeft(now);
+    const stop = t.stopPrice;
+
+    let state = '';
+    if (t.hedging) state = 'hedging…';
+    else if (!t.entryMatched) state = 'waiting · tap to cancel';
+    else if (stop != null && settings.autoHedge) state = `${settings.trailingStop ? 'TSL' : 'SL'} ${Ticks.fmt(stop)}`;
+
+    const row = document.createElement('div');
+    row.className = 'ticket-row';
+    row.innerHTML = `
+      <div class="ticket-badge" style="background:${isBack ? AppColors.back : AppColors.lay};">
+        ${isBack ? 'BACK' : 'LAY'} #${cloth}
+      </div>
+      <div class="ticket-desc tabular">
+        £${t.stake.toFixed(0)} @ ${Ticks.fmt(t.matchedPrice ?? t.entryPrice)} → ${Ticks.fmt(t.exitPrice)}
+      </div>
+      <div class="ticket-state">${state}</div>
+      ${left != null ? `
+        <div class="ticket-timer tabular" style="background:${left <= 3 ? AppColors.loss : AppColors.amber};">
+          0:${String(left).padStart(2, '0')}
+        </div>
+      ` : ''}
+      <div class="ticket-green tabular" style="color:${(g ?? 0) >= 0 ? AppColors.profit : AppColors.loss};">
+        ${g == null ? '' : `${g >= 0 ? '+' : '-'}£${Math.abs(g).toFixed(2)}`}
+      </div>
+    `;
+    rowsEl.appendChild(row);
+  }
+
+  const spinner = document.getElementById('uiPendingSpinner');
+  spinner.classList.toggle('hidden', engine.pending <= 0);
+
+  const statusEl = document.getElementById('uiStatusText');
+  statusEl.textContent = statusMsg || (settings.tapToTrade
+    ? 'Tap a column to trade its colour, or swipe'
+    : 'Swipe a column: up to lay, down to back');
+  statusEl.style.color = statusBad ? AppColors.loss : AppColors.muted;
+}
+
+// ============================================================================
+// 8. TRADING GRID CANVAS (Exact port of TradingGrid, _FatPainter, _ThinPainter)
+// ============================================================================
+function renderTradingGridCanvas(favourites, others, sizeScale) {
+  const container = document.getElementById('uiTradingGrid');
+  const canvas = document.getElementById('gridCanvas');
+  const rect = container.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const w = rect.width || 410;
+  const h = rect.height || 640;
+
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, w, h);
+
+  const axisW = 30;
+  const hintH = 0;
+  const headerH = 84;
+  const fatGap = 3;
+  const thinColW = 18;
+  const bottomLeftHeight = 36;
+
+  const nThin = others.length;
+  const leftW = Math.min(Math.max(axisW + nThin * thinColW, 108.0), w * 0.36);
+  const thinW = nThin === 0 ? 0.0 : (leftW - axisW) / nThin;
+  const nFat = Math.max(1, favourites.length);
+  const fatW = (w - leftW - fatGap * nFat) / nFat;
+  const colTop = hintH;
+  const plotTop = colTop + headerH;
+  const thinBottom = h - bottomLeftHeight - 8;
+  const pad = 12.0;
+
+  // Position compact bottom-left Hedge All button centered under thin columns
+  const blEl = document.getElementById('uiBottomLeft');
+  const btnW = Math.min(leftW - 24, 86);
+  blEl.style.left = `${(leftW - btnW) / 2}px`;
+  blEl.style.width = `${btnW}px`;
+  blEl.style.height = `${bottomLeftHeight}px`;
+
+  const y = (p) => plotTop + pad + PriceAxis.frac(p) * (h - plotTop - pad * 2);
+  const fatLeft = leftW + fatGap;
+
+  // 1. Determine shown grid prices
+  const shown = [...PriceAxis.major];
+  const ys = shown.map(p => y(p));
+  for (const p of PriceAxis.labels) {
+    if (shown.includes(p)) continue;
+    const yy = y(p);
+    if (ys.every(o => Math.abs(o - yy) >= 13)) {
+      shown.push(p);
+      ys.push(yy);
+    }
+  }
+
+  // 2. Draw horizontal grid lines & left axis price labels
+  for (const p of shown) {
+    const yy = y(p);
+    const isMajor = PriceAxis.major.includes(p);
+    const inThin = yy < thinBottom;
+
+    ctx.fillStyle = isMajor ? AppColors.gridStrong : AppColors.grid;
+    const lineLeft = inThin ? axisW : fatLeft;
+    ctx.fillRect(lineLeft, yy, w - lineLeft, 1);
+
+    if (inThin) {
+      ctx.font = `${isMajor ? '700' : '400'} 9.5px Roboto, sans-serif`;
+      ctx.fillStyle = isMajor ? AppColors.text2 : AppColors.muted;
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(axisLabel(p), axisW - 3, yy);
+    }
+  }
+
+  hitColumns = [];
+
+  // 3. Draw Thin Columns (longest price far left: others.reversed)
+  const thinOrder = [...others].reverse();
+  thinOrder.forEach((c, i) => {
+    const colX = axisW + i * thinW;
+    const colY = colTop;
+    const colW = thinW;
+    const colH = thinBottom - colTop;
+    drawThinColumn(ctx, c, colX, colY, colW, colH, headerH, (p) => y(p));
+    hitColumns.push({ id: c.id, left: colX, top: colY, width: colW, height: colH, isFat: false });
+  });
+
+  // 4. Draw Wide Columns (rightmost is first in list: favourites.reversed)
+  const fatOrder = [...favourites].reverse();
+  fatOrder.forEach((c, i) => {
+    const colX = fatLeft + i * (fatW + fatGap);
+    const colY = colTop;
+    const colW = fatW;
+    const colH = h - colTop;
+    drawFatColumn(ctx, c, colX, colY, colW, colH, headerH, sizeScale, (p) => y(p), shown);
+    hitColumns.push({ id: c.id, left: colX, top: colY, width: colW, height: colH, isFat: true });
+  });
+}
+
+function drawThinColumn(ctx, d, x, y, w, h, headerH, yFn) {
+  ctx.save();
+  const dir = d.motion.direction;
+  const dc = AppColors.direction(dir);
+  const strength = d.motion.strength;
+  const isShort = d.shortOdds;
+
+  // Column background
+  const padX = 1;
+  roundRectPath(ctx, x + padX, y, w - padX * 2, h, 6);
+  ctx.fillStyle = isShort
+    ? rgba(AppColors.shortGold, 0.28)
+    : dir === 'flat'
+      ? rgba(AppColors.muted, 0.06)
+      : rgba(dc, 0.07 + 0.08 * strength);
+  ctx.fill();
+  if (isShort) {
+    ctx.strokeStyle = AppColors.shortGold;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Header text (Back, Lay, #Cloth, Position)
+  const cx = x + w / 2;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 9.5px Roboto, sans-serif';
+  ctx.fillStyle = isShort ? AppColors.shortGold : AppColors.backText;
+  ctx.fillText(Ticks.fmt(d.book?.bestBack), cx, y + 20);
+  ctx.fillStyle = isShort ? AppColors.shortGold : AppColors.layText;
+  ctx.fillText(Ticks.fmt(d.book?.bestLay), cx, y + 33);
+  ctx.fillStyle = isShort ? AppColors.shortGold : AppColors.text2;
+  ctx.fillText(`#${d.runner.sortPriority}`, cx, y + 46);
+  ctx.font = '400 9.5px Roboto, sans-serif';
+  ctx.fillStyle = isShort ? AppColors.shortGold : AppColors.muted;
+  ctx.fillText(d.position, cx, y + 59);
+
+  // Clip plot area
+  const plotTop = y + headerH;
+  ctx.beginPath();
+  ctx.rect(x, plotTop, w, h - headerH);
+  ctx.clip();
+
+  // Center track line (2px wide)
+  ctx.fillStyle = isShort
+    ? rgba(AppColors.shortGold, 0.85)
+    : dir === 'flat'
+      ? AppColors.track
+      : rgba(dc, 0.55);
+  ctx.fillRect(cx - 1, plotTop, 2, y + h - plotTop);
+
+  // Range pill
+  if (d.lo != null && d.hi != null && !PriceAxis.offTop(d.lo)) {
+    const rTop = yFn(Math.min(d.hi, AppConfig.gridMaxPrice));
+    const rBot = yFn(d.lo);
+    roundRectPath(ctx, cx - 3, rTop, 6, Math.max(2, rBot - rTop), 3);
+    ctx.fillStyle = isShort
+      ? rgba(AppColors.shortGold, 0.55)
+      : rgba(dir === 'flat' ? AppColors.range : dc, 0.4);
+    ctx.fill();
+  }
+
+  // LTP circle or off-top arrow
+  const ltp = d.ltp;
+  if (ltp != null) {
+    if (PriceAxis.offTop(ltp)) {
+      drawArrow(ctx, cx, plotTop + 6, true, AppColors.muted);
+    } else {
+      const py = yFn(ltp);
+      ctx.beginPath();
+      ctx.arc(cx, py, 4.5, 0, Math.PI * 2);
+      ctx.fillStyle = isShort ? AppColors.shortGold : dir === 'flat' ? AppColors.muted : dc;
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(cx, py, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawFatColumn(ctx, d, x, y, w, h, headerH, sizeScale, yFn, shownPrices = []) {
+  ctx.save();
+  const dir = d.motion.direction;
+  const dc = AppColors.direction(dir);
+  const moving = dir !== 'flat';
+  const s = d.motion.strength;
+
+  // Column background & top/left/right border (Blue/Salmon/muted as before)
+  roundTopRectPath(ctx, x, y, w, h, 10);
+  ctx.fillStyle = moving ? rgba(dc, 0.06 + 0.10 * s) : rgba(AppColors.muted, 0.05);
+  ctx.fill();
+  if (moving) {
+    ctx.strokeStyle = rgba(dc, 0.35 + 0.40 * s);
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Favourite gold header box border
+  if (d.favourite) {
+    roundRectPath(ctx, x + 0.75, y + 0.75, w - 1.5, headerH - 1.5, 10);
+    ctx.strokeStyle = AppColors.leader;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // Header 5 lines: Position, BestBack, BestLay, P&L, #Cloth + Status
+  const cx = x + w / 2;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // 1. Position
+  ctx.font = '800 18px Roboto, sans-serif';
+  ctx.fillStyle = d.favourite ? AppColors.leader : '#FFFFFF';
+  ctx.fillText(d.position, cx, y + 14);
+
+  // 2. Best Back
+  ctx.font = '800 14px Roboto, sans-serif';
+  ctx.fillStyle = AppColors.backText;
+  ctx.fillText(Ticks.fmt(d.book?.bestBack), cx, y + 31);
+
+  // 3. Best Lay
+  ctx.fillStyle = AppColors.layText;
+  ctx.fillText(Ticks.fmt(d.book?.bestLay), cx, y + 46);
+
+  // 4. Whole-book P&L if wins
+  ctx.font = '800 13.5px Roboto, sans-serif';
+  if (d.pnlIfWins == null) {
+    ctx.fillStyle = AppColors.muted;
+    ctx.fillText('–', cx, y + 61);
+  } else {
+    ctx.fillStyle = d.pnlIfWins >= 0 ? AppColors.profit : AppColors.loss;
+    const sign = d.pnlIfWins >= 0 ? '+' : '-';
+    ctx.fillText(`${sign}£${Math.abs(d.pnlIfWins).toFixed(2)}`, cx, y + 61);
+  }
+
+  // 5. #Cloth + OPEN/HEDGED
+  ctx.font = '700 9.5px Roboto, sans-serif';
+  const clothLabel = d.status ? `#${d.runner.sortPriority} ${d.status}` : `#${d.runner.sortPriority}`;
+  ctx.fillStyle = d.status === 'OPEN'
+    ? AppColors.amber
+    : d.status === 'HEDGED'
+      ? AppColors.profit
+      : d.favourite
+        ? AppColors.leader
+        : AppColors.muted;
+  ctx.fillText(clothLabel, cx, y + 75);
+
+  // Plot area clipping
+  const plotTop = y + headerH;
+  ctx.beginPath();
+  ctx.rect(x, plotTop, w, h - headerH);
+  ctx.clip();
+
+  // 1. Center vertical track line
+  ctx.strokeStyle = AppColors.track;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx, plotTop);
+  ctx.lineTo(cx, y + h);
+  ctx.stroke();
+
+  // 1b. Price ladder odds on the left of every wide column
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  for (const p of shownPrices) {
+    const yy = yFn(p);
+    const isMajor = PriceAxis.major.includes(p);
+    ctx.font = `${isMajor ? '700' : '400'} 9.5px Roboto, sans-serif`;
+    ctx.fillStyle = isMajor ? AppColors.text2 : AppColors.muted;
+    ctx.fillText(axisLabel(p), x + 3, yy - 1.5);
+  }
+
+  // 2. In-running range (gold for favourite only)
+  if (d.lo != null && d.hi != null) {
+    const rTop = yFn(Math.min(d.hi, AppConfig.gridMaxPrice));
+    const rBot = yFn(d.lo);
+    const c = d.favourite ? AppColors.leader : AppColors.range;
+    ctx.fillStyle = rgba(c, d.favourite ? 0.12 : 0.10);
+    ctx.fillRect(x + 1, rTop, w - 2, Math.max(1, rBot - rTop));
+
+    ctx.strokeStyle = c;
+    ctx.lineWidth = d.favourite ? 2 : 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 1, rTop);
+    ctx.lineTo(x + w - 1, rTop);
+    ctx.moveTo(x + 1, rBot);
+    ctx.lineTo(x + w - 1, rBot);
+    ctx.stroke();
+  }
+
+  // 3. Money waiting smooth quadratic Bezier blobs (Exact from _FatPainter.blob)
+  if (d.book) {
+    const maxW = w * 0.72;
+    function drawBlob(levels, color, up) {
+      const pts = [];
+      let prev = null;
+      for (const ps of levels) {
+        if (PriceAxis.offTop(ps.price)) continue;
+        let yy = yFn(ps.price) + (up ? -2 : 2);
+        if (prev != null) yy = up ? Math.min(yy, prev - 3.5) : Math.max(yy, prev + 3.5);
+        prev = yy;
+        const dx = maxW * Math.min(Math.max(ps.size / sizeScale, 0.08), 1.0) / 2.0;
+        pts.push({ dx, dy: yy });
+      }
+      if (pts.length === 0) return;
+      pts.sort((p, q) => p.dy - q.dy);
+      const cap = 2.5;
+      const first = pts[0], last = pts[pts.length - 1];
+      const v = [
+        { x: cx - first.dx * 0.5, y: first.dy - cap },
+        ...pts.map(p => ({ x: cx - p.dx, y: p.dy })),
+        { x: cx - last.dx * 0.5, y: last.dy + cap },
+        { x: cx + last.dx * 0.5, y: last.dy + cap },
+        ...[...pts].reverse().map(p => ({ x: cx + p.dx, y: p.dy })),
+        { x: cx + first.dx * 0.5, y: first.dy - cap }
+      ];
+      const mid = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
+      const start = mid(v[v.length - 1], v[0]);
+      ctx.beginPath();
+      ctx.moveTo(start.x, start.y);
+      for (let i = 0; i < v.length; i++) {
+        const m = mid(v[i], v[(i + 1) % v.length]);
+        ctx.quadraticCurveTo(v[i].x, v[i].y, m.x, m.y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = rgba(color, 0.85);
+      ctx.fill();
+    }
+
+    drawBlob(d.book.lays, AppColors.lay, true);
+    drawBlob(d.book.backs, AppColors.back, false);
+  }
+
+  function drawLineOddsLabel(lineY, price, borderColor, textColor, alignRight, glow = false) {
+    const label = Ticks.fmt(price);
+    ctx.font = '800 9.5px Roboto, sans-serif';
+    const textW = ctx.measureText(label).width;
+    const pillW = textW + 8;
+    const pillH = 13;
+    const pillX = alignRight ? (x + w - pillW - 3) : (cx - pillW / 2);
+    const pillY = lineY - pillH / 2;
+
+    if (glow) {
+      ctx.save();
+      ctx.shadowColor = AppColors.profit;
+      ctx.shadowBlur = 12;
+      roundRectPath(ctx, pillX - 1.5, pillY - 1.5, pillW + 3, pillH + 3, 5);
+      ctx.fillStyle = rgba(AppColors.profit, 0.55);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    roundRectPath(ctx, pillX, pillY, pillW, pillH, 4);
+    ctx.fillStyle = rgba(AppColors.bg, 0.92);
+    ctx.fill();
+    ctx.strokeStyle = rgba(glow ? AppColors.profit : borderColor, 0.95);
+    ctx.lineWidth = glow ? 1.8 : 1;
+    ctx.stroke();
+
+    ctx.fillStyle = textColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, pillX + pillW / 2, lineY + 0.5);
+  }
+
+  const ltp = d.ltp;
+  const exitGlow = Boolean(
+    d.trade && (d.trade.exitMatchedGlow || (ltp != null && Math.abs(ltp - d.trade.exit) < 1e-6))
+  );
+
+  // 4. Trade banding: solid entry, dashed exit + entered odds on entry line & exit odds on exit line
+  if (d.trade) {
+    const ec = d.trade.side === 'back' ? AppColors.back : AppColors.lay;
+    const ecText = d.trade.side === 'back' ? AppColors.backText : AppColors.layText;
+    const xc = d.trade.side === 'back' ? AppColors.lay : AppColors.back;
+    const xcText = d.trade.side === 'back' ? AppColors.layText : AppColors.backText;
+    const ey = yFn(d.trade.entry);
+    const xy = yFn(d.trade.exit);
+
+    ctx.strokeStyle = ec;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x, ey);
+    ctx.lineTo(x + w, ey);
+    ctx.stroke();
+
+    if (exitGlow) {
+      ctx.save();
+      ctx.shadowColor = AppColors.profit;
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = rgba(AppColors.profit, 0.85);
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(x, xy);
+      ctx.lineTo(x + w, xy);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.strokeStyle = exitGlow ? AppColors.profit : xc;
+    ctx.lineWidth = 2;
+    for (let dx = 0; dx < w; dx += 8) {
+      ctx.beginPath();
+      ctx.moveTo(x + dx, xy);
+      ctx.lineTo(x + Math.min(w, dx + 5), xy);
+      ctx.stroke();
+    }
+
+    // Entered odds on the solid entry line
+    drawLineOddsLabel(ey, d.trade.entry, ec, ecText, true, false);
+
+    // Exit odds on the dashed exit line
+    drawLineOddsLabel(xy, d.trade.exit, exitGlow ? AppColors.profit : xc, exitGlow ? '#FFFFFF' : xcText, true, exitGlow);
+  }
+
+  // 5. Predicted price after bet delay (ghost outline bar)
+  if (d.predicted != null && dir !== 'flat' && !PriceAxis.offTop(d.predicted)) {
+    const py = yFn(d.predicted);
+    roundRectPath(ctx, x + 6, py - 1.25, w - 12, 2.5, 1.25);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // 6. Last Traded Price marker (gold if 1st, otherwise white) + current changing odds on the right + direction arrow
+  if (ltp != null) {
+    if (PriceAxis.offTop(ltp)) {
+      drawArrow(ctx, cx, plotTop + 6, true, AppColors.muted);
+    } else {
+      const yy = yFn(ltp);
+      const isFirst = d.position === '1st' || d.position === 'F1';
+      const lineCol = isFirst ? AppColors.shortGold : '#FFFFFF';
+      const lineH = isFirst ? 2.5 : 2;
+
+      if (exitGlow) {
+        ctx.save();
+        ctx.shadowColor = AppColors.profit;
+        ctx.shadowBlur = 12;
+        roundRectPath(ctx, x + 6, yy - lineH / 2, w - 12, lineH, 1);
+        ctx.fillStyle = AppColors.profit;
+        ctx.fill();
+        ctx.restore();
+      }
+
+      roundRectPath(ctx, x + 6, yy - lineH / 2, w - 12, lineH, 1);
+      ctx.fillStyle = lineCol;
+      ctx.fill();
+
+      drawLineOddsLabel(yy, ltp, lineCol, lineCol, true, exitGlow);
+
+      if (dir !== 'flat') {
+        drawArrow(ctx, x + w - 7, dir === 'steaming' ? yy + 11 : yy - 11, dir === 'drifting', AppColors.direction(dir));
+      }
+    }
+  }
+
+  ctx.restore();
+}
+
+function drawArrow(ctx, x, y, up, color) {
+  ctx.beginPath();
+  if (up) {
+    ctx.moveTo(x, y - 5);
+    ctx.lineTo(x + 5, y + 3);
+    ctx.lineTo(x - 5, y + 3);
+  } else {
+    ctx.moveTo(x, y + 5);
+    ctx.lineTo(x + 5, y - 3);
+    ctx.lineTo(x - 5, y - 3);
+  }
+  ctx.closePath();
+  ctx.fillStyle = color;
+  ctx.fill();
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rad, y);
+  ctx.lineTo(x + w - rad, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+  ctx.lineTo(x + w, y + h - rad);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+  ctx.lineTo(x + rad, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
+  ctx.lineTo(x, y + rad);
+  ctx.quadraticCurveTo(x, y, x + rad, y);
+  ctx.closePath();
+}
+
+function roundTopRectPath(ctx, x, y, w, h, r) {
+  const rad = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x, y + h);
+  ctx.lineTo(x, y + rad);
+  ctx.quadraticCurveTo(x, y, x + rad, y);
+  ctx.lineTo(x + w - rad, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+  ctx.lineTo(x + w, y + h);
+}
+
+// ============================================================================
+// 9. GESTURE HANDLING ON WIDE COLUMNS (Swipe Up = Lay, Swipe Down = Back, Tap)
+// ============================================================================
+(() => {
+  const canvas = document.getElementById('gridCanvas');
+  let activeColId = null;
+  let startY = 0;
+  let dragged = 0;
+  let fired = false;
+
+  function findFatCol(clientX, clientY) {
+    const rect = canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    return hitColumns.find(c => c.isFat && x >= c.left && x <= c.left + c.width && y >= c.top && y <= c.top + c.height);
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    const col = findFatCol(e.clientX, e.clientY);
+    if (!col) { activeColId = null; return; }
+    activeColId = col.id;
+    startY = e.clientY;
+    dragged = 0;
+    fired = false;
+    canvas.setPointerCapture(e.pointerId);
+  });
+
+  canvas.addEventListener('pointermove', (e) => {
+    if (activeColId == null || fired) return;
+    dragged = e.clientY - startY;
+    if (Math.abs(dragged) > 28) {
+      fired = true;
+      const side = dragged < 0 ? 'lay' : 'back';
+      engine.enter(activeColId, side);
+    }
+  });
+
+  canvas.addEventListener('pointerup', (e) => {
+    if (activeColId != null && !fired && Math.abs(dragged) < 12) {
+      onColumnTap(activeColId);
+    }
+    activeColId = null;
+  });
+})();
+
+function onColumnTap(id) {
+  const now = Date.now();
+  const t = engine.trades[id];
+  if (t && engine.entryOpen(id)) {
+    if (now - t.openedAt < 700) return;
+    engine.cancelEntry(id);
+    return;
+  }
+  const s = engine._snap;
+  const pos = s ? positionFor(id, s.matches) : null;
+  const open = t != null || (pos != null && Math.abs(pos.ifWins - pos.ifLoses) >= 0.05);
+
+  if (!open && settings.tapToTrade) {
+    const dir = motion.of(id).direction;
+    if (dir === 'flat') {
+      setStatus('No clear direction on that runner: swipe to choose', false);
+      return;
+    }
+    engine.enter(id, dir === 'steaming' ? 'back' : 'lay');
+    return;
+  }
+
+  if (lastTapId === id && (now - lastTapAt) < 400) {
+    lastTapId = null;
+    engine.hedge(id);
+  } else {
+    lastTapId = id;
+    lastTapAt = now;
+  }
+}
+
+function toggleArm() {
+  armed = !armed;
+  renderUI();
+}
+
+// ============================================================================
+// 10. SETTINGS & SCREEN NAVIGATION
+// ============================================================================
+function openSettings() {
+  document.getElementById('screenSettings').classList.remove('hidden');
+  renderSettingsScreen();
+}
+
+function closeSettings() {
+  document.getElementById('screenSettings').classList.add('hidden');
+  renderUI();
+}
+
+function renderSettingsScreen() {
+  const stakeRow = document.getElementById('uiStakeRow');
+  stakeRow.innerHTML = '';
+  for (const v of AppConfig.stakePresets) {
+    const selected = settings.stake === v;
+    const btn = document.createElement('button');
+    btn.style.cssText = `flex:1; height:44px; border:none; border-radius:10px; font-size:15px; font-weight:800; cursor:pointer; background:${selected ? '#FFFFFF' : '#1C222B'}; color:${selected ? AppColors.bg : '#FFFFFF'};`;
+    btn.textContent = `£${v}`;
+    btn.onclick = () => { settings.stake = v; renderSettingsScreen(); };
+    stakeRow.appendChild(btn);
+  }
+
+  document.getElementById('swTapToTrade').classList.toggle('on', settings.tapToTrade);
+  document.getElementById('swFireTogether').classList.toggle('on', settings.fireTogether);
+  document.getElementById('swAutoHedge').classList.toggle('on', settings.autoHedge);
+  document.getElementById('swTrailingStop').classList.toggle('on', settings.trailingStop);
+
+  document.getElementById('valExitTicks').textContent = settings.exitTicks;
+  document.getElementById('valEntryOffset').textContent = settings.entryOffsetTicks;
+  document.getElementById('valStopLoss').textContent = settings.stopLossTicks;
+  document.getElementById('valTimedExit').textContent = `${settings.timedExitSecs}s`;
+}
+
+function toggleSetting(key) {
+  settings[key] = !settings[key];
+  renderSettingsScreen();
+}
+
+function stepSetting(key, delta, min, max) {
+  settings[key] = Math.min(Math.max(settings[key] + delta, min), max);
+  renderSettingsScreen();
+}
+
+function cancelAllFromSettings() {
+  currentRace.cancelAll();
+  setStatus('Unmatched bets cancelled', false);
+  closeSettings();
+}
+
+function resetCareerFromSettings() {
+  resetCareer();
+  setStatus('Career bankroll reset to £100.00', false);
+  closeSettings();
+}
+
+function openRaceListScreen() {
+  document.getElementById('screenSettings').classList.add('hidden');
+  document.getElementById('screenRaces').classList.remove('hidden');
+  renderRaceList();
+}
+
+function closeRaceListScreen() {
+  document.getElementById('screenRaces').classList.add('hidden');
+  renderUI();
+}
+
+function selectDistanceRace(distId) {
+  const dist = RACE_DISTANCES.find(d => d.id === distId) || RACE_DISTANCES[3];
+  document.getElementById('screenRaces').classList.add('hidden');
+  startNewPracticeRace({
+    distanceId: dist.id,
+    nRunners: dist.defaultRunners,
+    venue: VENUES[Math.floor(Math.random() * VENUES.length)]
+  });
+}
+
+function selectCardRace(idx) {
+  currentCardIdx = idx;
+  const r = dailyCard[idx];
+  document.getElementById('screenRaces').classList.add('hidden');
+  if (r) startNewPracticeRace(r);
+}
+
+function renderRaceList() {
+  const body = document.getElementById('uiRaceListBody');
+  const net = career.bankroll - career.startingBankroll;
+  const netSign = net >= 0 ? '+' : '-';
+  const winRate = career.racesCompleted > 0
+    ? `${Math.round((career.racesWon / career.racesCompleted) * 100)}%`
+    : '–';
+
+  const distCardsHtml = RACE_DISTANCES.map(d => `
+    <div class="dist-card" onclick="selectDistanceRace('${d.id}')">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <span style="font-size:13.5px; font-weight:800; color:#FFFFFF;">${d.label}</span>
+        <span style="font-size:10.5px; font-weight:800; color:var(--backText); background:rgba(77,163,255,0.14); padding:2px 6px; border-radius:4px;">${d.defaultRunners}r</span>
+      </div>
+      <div style="font-size:11px; color:var(--muted);">${d.desc}</div>
+    </div>
+  `).join('');
+
+  const cardRowsHtml = dailyCard.map((r, idx) => `
+    <div onclick="selectCardRace(${idx})" class="card-row" style="cursor:pointer;">
+      <div>
+        <div style="font-size:14.5px; font-weight:700; color:#FFFFFF;">${r.time} ${r.venue} · <span style="color:var(--backText);">${r.distanceId}</span></div>
+        <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">${r.distanceLabel} · ${r.nRunners} runners · ${r.desc}</div>
+      </div>
+      <span style="color:var(--profit); font-weight:800; font-size:12px; background:rgba(61,220,132,0.14); padding:4px 8px; border-radius:6px;">TRADE ▶</span>
+    </div>
+  `).join('');
+
+  const historyHtml = career.history.length === 0
+    ? `<div style="padding:14px; font-size:12px; color:var(--muted); text-align:center;">Complete a race to record your career results</div>`
+    : career.history.slice(0, 6).map(h => `
+      <div class="card-row">
+        <div>
+          <div style="font-size:13px; font-weight:700; color:#FFFFFF;">${h.title}</div>
+          <div style="font-size:11px; color:var(--muted); margin-top:1px;">Winner: #${h.winnerCloth} ${h.winnerName} · ${h.status}</div>
+        </div>
+        <div class="tabular" style="font-size:13.5px; font-weight:800; color:${h.pnl > 0.005 ? AppColors.profit : h.pnl < -0.005 ? AppColors.loss : AppColors.text2};">
+          ${h.pnl >= 0 ? '+' : '-'}£${Math.abs(h.pnl).toFixed(2)}
+        </div>
+      </div>
+    `).join('');
+
+  body.innerHTML = `
+    <div class="sec-title" style="margin-top:4px;">CAREER BANKROLL</div>
+    <div class="card-box" style="padding:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <div style="font-size:11px; color:var(--muted); font-weight:700;">AVAILABLE BALANCE</div>
+          <div class="tabular" style="font-size:26px; font-weight:900; color:var(--leader); margin-top:2px;">£${career.bankroll.toFixed(2)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px; color:var(--muted); font-weight:700;">CAREER P&L</div>
+          <div class="tabular" style="font-size:18px; font-weight:800; color:${net >= 0 ? AppColors.profit : AppColors.loss}; margin-top:2px;">
+            ${netSign}£${Math.abs(net).toFixed(2)}
+          </div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-top:12px; padding-top:10px; border-top:1px solid var(--grid);">
+        <div>
+          <div style="font-size:10px; color:var(--muted);">RACES</div>
+          <div class="tabular" style="font-size:13.5px; font-weight:800; margin-top:2px;">${career.racesCompleted}</div>
+        </div>
+        <div>
+          <div style="font-size:10px; color:var(--muted);">WIN RATE</div>
+          <div class="tabular" style="font-size:13.5px; font-weight:800; color:var(--profit); margin-top:2px;">${winRate}</div>
+        </div>
+        <div>
+          <div style="font-size:10px; color:var(--muted);">BEST RACE</div>
+          <div class="tabular" style="font-size:13.5px; font-weight:800; color:var(--profit); margin-top:2px;">+£${career.bestRacePnl.toFixed(2)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-title">QUICK START BY DISTANCE</div>
+    <div class="dist-grid">
+      ${distCardsHtml}
+    </div>
+
+    <div class="sec-title">TODAY'S RACE CARD</div>
+    <div class="card-box">
+      ${cardRowsHtml}
+    </div>
+
+    <div class="sec-title">RECENT RACE RESULTS</div>
+    <div class="card-box">
+      ${historyHtml}
+    </div>
+  `;
+}
+
+// ============================================================================
+// 11. SIMULATION LOOP & PWA SERVICE WORKER
+// ============================================================================
+startInitialScreenshotRace();
+
+setInterval(() => {
+  if (!currentRace || currentRace.closed) return;
+  currentRace.step(0.3);
+  onNewSnapshot(currentRace.snapshot());
+}, 300);
+
+window.addEventListener('resize', renderUI);
+
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
