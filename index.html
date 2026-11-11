@@ -1436,6 +1436,14 @@ function planPrices(side, predictedIdx, offsetTicks, exitTicks) {
   return { entry, exit: exitFrom(side, entry, exitTicks) };
 }
 
+function shortHorseName(name) {
+  if (!name) return '';
+  const parts = String(name).trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 10);
+  const short = `${parts[0][0]}. ${parts[parts.length - 1]}`;
+  return short.length > 11 ? short.slice(0, 11) : short;
+}
+
 class TradeEngine {
   constructor(market, motion, onMessage) {
     this.market = market;
@@ -1449,7 +1457,7 @@ class TradeEngine {
 
   _cloth(sel) {
     const r = this.market.runners.find(x => x.selectionId === sel);
-    return r ? `#${r.sortPriority}` : '#?';
+    return r ? `#${r.sortPriority} ${r.name}` : '#?';
   }
 
   async _place(sel, side, price, stake, keep = settings.keepInPlay) {
@@ -2328,6 +2336,7 @@ function renderUI() {
 
   const progressRunners = ordered.map((r, i) => ({
     cloth: r.sortPriority,
+    name: r.name,
     behind: lengths ? (lengths[r.selectionId] ?? i) : i,
     favourite: r.selectionId === favId,
     topThree: i < 4
@@ -2400,14 +2409,25 @@ function renderProgressBar(progress, elapsedSecs, runners, furlongs) {
   const rightText = document.getElementById('uiProgressRight');
   const mm = Math.floor(elapsedSecs / 60);
   const ss = String(elapsedSecs % 60).padStart(2, '0');
+  const sorted = [...runners].sort((a, b) => a.behind - b.behind);
 
   if (progress == null) {
     const remPre = currentRace ? Math.max(0, Math.ceil(currentRace._preOff - currentRace._t)) : 0;
-    elText.textContent = `Pre-off (${remPre}s to off)`;
+    const fav = runners.find(r => r.favourite) || sorted[0];
+    if (fav && fav.name) {
+      elText.innerHTML = `Pre-off (${remPre}s) · <span style="color:${AppColors.leader}; font-weight:800;">Fav: #${fav.cloth} ${fav.name}</span>`;
+    } else {
+      elText.textContent = `Pre-off (${remPre}s to off)`;
+    }
     rightText.textContent = furlongs ? `${fmtFurlongs(furlongs)} · waiting for the off` : 'Waiting for the off';
     rightText.style.color = AppColors.muted;
   } else {
-    elText.textContent = `${mm}:${ss} elapsed`;
+    const leader = sorted[0];
+    if (leader && leader.name) {
+      elText.innerHTML = `${mm}:${ss} · <span style="color:${AppColors.leader}; font-weight:800;">1st: #${leader.cloth} ${leader.name}</span>`;
+    } else {
+      elText.textContent = `${mm}:${ss} elapsed`;
+    }
     if (furlongs) {
       const run = furlongs * progress;
       rightText.textContent = `${fmtFurlongs(run)} run · ${fmtFurlongs(furlongs - run)} to go`;
@@ -2464,7 +2484,6 @@ function renderProgressBar(progress, elapsedSecs, runners, furlongs) {
   // Runner Dots
   const fill = p * w;
   const step = Math.max(10.0, w * 0.035);
-  const sorted = [...runners].sort((a, b) => a.behind - b.behind);
 
   sorted.forEach((r, i) => {
     const x = Math.min(Math.max(fill - r.behind * step, 0.0), w - 15);
@@ -2501,10 +2520,12 @@ function renderTradeTicket(s) {
   for (const t of trades) {
     const r = currentMarket.runners.find(x => x.selectionId === t.selectionId);
     const cloth = r ? r.sortPriority : '?';
+    const horseName = r ? r.name : '';
     const isBack = t.side === 'back';
     const g = engine.tradeGreen(s, t);
     const left = t.secondsLeft(now);
     const stop = t.stopPrice;
+    const stakeStr = Number.isInteger(t.stake) ? `£${t.stake.toFixed(0)}` : `£${t.stake.toFixed(2)}`;
 
     let state = '';
     if (t.hedging) state = 'hedging…';
@@ -2518,7 +2539,7 @@ function renderTradeTicket(s) {
         ${isBack ? 'BACK' : 'LAY'} #${cloth}
       </div>
       <div class="ticket-desc tabular">
-        £${t.stake.toFixed(0)} @ ${Ticks.fmt(t.matchedPrice ?? t.entryPrice)} → ${Ticks.fmt(t.exitPrice)}
+        ${horseName ? `<span style="color:#FFFFFF; font-weight:700;">${horseName}</span> · ` : ''}${stakeStr} @ ${Ticks.fmt(t.matchedPrice ?? t.entryPrice)} → ${Ticks.fmt(t.exitPrice)}
       </div>
       <div class="ticket-state">${state}</div>
       ${left != null ? `
@@ -2781,9 +2802,12 @@ function drawFatColumn(ctx, d, x, y, w, h, headerH, sizeScale, yFn, shownPrices 
     ctx.fillText(`${sign}£${Math.abs(d.pnlIfWins).toFixed(2)}`, cx, y + 61);
   }
 
-  // 5. #Cloth + OPEN/HEDGED
-  ctx.font = '700 9.5px Roboto, sans-serif';
-  const clothLabel = d.status ? `#${d.runner.sortPriority} ${d.status}` : `#${d.runner.sortPriority}`;
+  // 5. #Cloth + Short Horse Name (coloured by OPEN / HEDGED / favourite)
+  ctx.font = '700 9px Roboto, sans-serif';
+  const shortName = shortHorseName(d.runner.name);
+  const clothLabel = shortName
+    ? `#${d.runner.sortPriority} ${shortName}`
+    : (d.status ? `#${d.runner.sortPriority} ${d.status}` : `#${d.runner.sortPriority}`);
   ctx.fillStyle = d.status === 'OPEN'
     ? AppColors.amber
     : d.status === 'HEDGED'
@@ -2791,7 +2815,7 @@ function drawFatColumn(ctx, d, x, y, w, h, headerH, sizeScale, yFn, shownPrices 
       : d.favourite
         ? AppColors.leader
         : AppColors.muted;
-  ctx.fillText(clothLabel, cx, y + 75);
+  ctx.fillText(clothLabel, cx, y + 75, w - 6);
 
   // Plot area clipping
   const plotTop = y + headerH;
