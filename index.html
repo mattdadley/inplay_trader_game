@@ -515,6 +515,14 @@
       <div id="uiDelayBadge" class="delay-pill">delay 1s</div>
     </div>
 
+    <!-- Live data connection status (only shown in Live mode) -->
+    <div id="uiLiveStrip" class="hidden" onclick="openSettings()" style="display:flex; align-items:center; gap:6px; padding:3px 10px; font-size:11px; font-weight:700; background:#11151B; border-bottom:1px solid var(--grid); cursor:pointer; white-space:nowrap; overflow:hidden;">
+      <span id="uiLiveDot" style="width:8px; height:8px; border-radius:50%; background:#8B93A1; flex-shrink:0;"></span>
+      <span id="uiLiveState" style="flex-shrink:0;">DISCONNECTED</span>
+      <span id="uiLiveMsg" style="color:var(--muted); overflow:hidden; text-overflow:ellipsis;"></span>
+      <span style="margin-left:auto; color:var(--amber); flex-shrink:0;">PAPER</span>
+    </div>
+
     <!-- RaceProgressBar -->
     <div class="progress-wrap">
       <div class="progress-labels">
@@ -647,6 +655,32 @@
     </div>
 
     <div class="scroll-body">
+      <div class="sec-title">DATA SOURCE</div>
+      <div class="card-box">
+        <div class="card-row" onclick="setDataSource('sim')" style="cursor:pointer;">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600; color:#FFFFFF;">Simulated</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Practice races generated on this device</div>
+          </div>
+          <div id="radioSrcSim" style="width:20px; height:20px; border-radius:50%; border:2px solid var(--profit); display:flex; align-items:center; justify-content:center; flex-shrink:0;"></div>
+        </div>
+        <div class="card-row" onclick="setDataSource('live')" style="cursor:pointer;">
+          <div style="padding-right:12px;">
+            <div style="font-size:14px; font-weight:600; color:#FFFFFF;">Live (Bet Angel bridge)</div>
+            <div style="font-size:11.5px; color:var(--muted); margin-top:2px;">Real prices from Bet Angel on your PC. Taps and swipes stay PAPER trades, no real bets.</div>
+          </div>
+          <div id="radioSrcLive" style="width:20px; height:20px; border-radius:50%; border:2px solid var(--muted); display:flex; align-items:center; justify-content:center; flex-shrink:0;"></div>
+        </div>
+        <div class="card-row" style="flex-direction:column; align-items:stretch; gap:6px;">
+          <label for="inpBridgeUrl" style="font-size:12px; color:var(--muted); font-weight:700;">Bridge address</label>
+          <input id="inpBridgeUrl" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Blank = the PC this page was opened from" style="padding:10px; border-radius:8px; border:1px solid var(--panelLine); background:#11151B; color:#FFFFFF; font-size:14px;">
+          <label for="inpBridgeToken" style="font-size:12px; color:var(--muted); font-weight:700; margin-top:4px;">Token (shown in the bridge window)</label>
+          <input id="inpBridgeToken" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Shared token" style="padding:10px; border-radius:8px; border:1px solid var(--panelLine); background:#11151B; color:#FFFFFF; font-size:14px;">
+          <button onclick="saveBridgeConfig()" style="margin-top:6px; padding:11px; border:none; border-radius:10px; background:var(--profit); color:#08240F; font-size:13.5px; font-weight:800; cursor:pointer;">Save &amp; connect live</button>
+          <div id="uiLiveConnText" style="font-size:12px; color:var(--muted); min-height:16px;"></div>
+        </div>
+      </div>
+
       <div class="sec-title">STAKE &amp; LIABILITY</div>
       <div class="card-box">
         <div class="card-row" onclick="setStakeMode('standardLiability')" style="cursor:pointer;">
@@ -1134,6 +1168,7 @@ class MarketMotion {
 // 4. SETTINGS & SIMULATED FEED (SimSource & _SimRace from lib/feeds/sim_source.dart)
 // ============================================================================
 const settings = {
+  dataSource: liveConfig.dataSource || 'sim', // 'sim' | 'live'
   stake: 5,
   stakeMode: 'standardLiability', // 'standardLiability' | 'fixedLiability' | 'percentageLiability'
   liabilityPct: 10,
@@ -1416,6 +1451,412 @@ class SimRace {
       runner(id) { return this.runners.find(r => r.selectionId === id) || null; }
     };
   }
+}
+
+// ============================================================================
+// 4b. LIVE DATA SOURCE (Bet Angel via the PC bridge) - READ-ONLY
+//     Prices come from the bridge; every tap/swipe is still a PAPER order that
+//     is matched locally against those live prices. Nothing is sent anywhere.
+// ============================================================================
+const LIVE_CFG_KEY = 'inrunBridgeConfig_v1';
+const liveConfig = (() => {
+  const d = { dataSource: 'sim', bridgeUrl: '', bridgeToken: '' };
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(LIVE_CFG_KEY) : null;
+    return raw ? { ...d, ...JSON.parse(raw) } : d;
+  } catch (_) { return d; }
+})();
+function saveLiveConfig() {
+  try { localStorage.setItem(LIVE_CFG_KEY, JSON.stringify(liveConfig)); } catch (_) {}
+}
+
+function liveSelId(id) {
+  return /^\d+$/.test(String(id)) ? Number(id) : id;
+}
+
+function furlongsFromName(name) {
+  const m = /(?:(\d+)m)?\s*(?:(\d+)f)?/i.exec((name || '').match(/\b\d+m(?:\s*\d+f)?|\b\d+f\b/i)?.[0] || '');
+  if (!m || (!m[1] && !m[2])) return null;
+  return (Number(m[1] || 0) * 8) + Number(m[2] || 0);
+}
+
+class LiveRace {
+  constructor(market) {
+    this.market = market;
+    this.isLive = true;
+    this._orders = [];
+    this._nextId = 1;
+    this._books = {};
+    this._lastPrice = {};
+    this._results = {};
+    this._status = 'open';
+    this._inPlay = false;
+    this._betDelay = 0;
+    this._receivedAt = Date.now();
+    this._lapsedAtOff = false;
+    this._startTime = market.startTime ? Date.parse(market.startTime) : null;
+  }
+
+  get inPlay() { return this._inPlay; }
+  get suspended() { return this._status === 'suspended'; }
+  get closed() { return this._status === 'closed'; }
+  get secondsToOff() {
+    if (!this._startTime || isNaN(this._startTime)) return null;
+    return Math.max(0, (this._startTime - Date.now()) / 1000);
+  }
+  get winnerSource() {
+    return Object.values(this._results).includes('WINNER') ? 'result' : 'price';
+  }
+
+  applyMarket(m, receivedAt) {
+    this._status = m.status || 'open';
+    this._inPlay = !!m.inPlay;
+    this._betDelay = Math.max(0, Number(m.betDelay) || 0);
+    this._receivedAt = receivedAt;
+    if (m.startTime) this._startTime = Date.parse(m.startTime);
+    for (const r of m.runners || []) {
+      const sel = liveSelId(r.selectionId);
+      const backs = (r.backs || []).map(l => ({ price: Ticks.snap(l.price), size: l.size }));
+      const lays = (r.lays || []).map(l => ({ price: Ticks.snap(l.price), size: l.size }));
+      this._books[sel] = {
+        selectionId: sel,
+        active: r.active !== false,
+        lastTraded: r.ltp != null ? Ticks.snap(r.ltp) : null,
+        totalTraded: r.totalTraded || 0,
+        backs,
+        lays,
+        get bestBack() { return this.backs.length === 0 ? null : this.backs[0].price; },
+        get bestLay() { return this.lays.length === 0 ? null : this.lays[0].price; }
+      };
+      if (r.result) this._results[sel] = r.result;
+      const p = r.ltp ?? backs[0]?.price;
+      if (p != null && r.active !== false && this._status !== 'closed') this._lastPrice[sel] = p;
+    }
+    this._matchResting();
+  }
+
+  // Called by the shared 300ms loop: no price changes here, just re-check paper orders.
+  step() { this._matchResting(); }
+
+  _book(sel) {
+    return this._books[sel] || {
+      selectionId: sel, active: false, lastTraded: null, backs: [], lays: [],
+      get bestBack() { return null; }, get bestLay() { return null; }
+    };
+  }
+
+  // PAPER order only: stored in memory on this device and matched against live prices.
+  place(sel, side, price, size, keep = settings.keepInPlay) {
+    const o = {
+      id: `P${this._nextId++}`, sel, side, price, size, matched: 0, cancelled: false, keep: !!keep,
+      get remaining() { return this.cancelled ? 0 : this.size - this.matched; }
+    };
+    this._orders.push(o);
+    this._matchOne(o);
+    return { ok: true, message: o.matched > 0 ? `Matched £${o.matched.toFixed(2)}` : 'Placed', betId: o.id, sizeMatched: o.matched };
+  }
+
+  _matchOne(o) {
+    if (o.remaining <= 0 || this.suspended || this.closed) return;
+    const b = this._books[o.sel];
+    if (!b || !b.active) return;
+    const ok = o.side === 'back'
+      ? (b.bestBack != null && o.price <= b.bestBack + 1e-9)
+      : (b.bestLay != null && o.price >= b.bestLay - 1e-9);
+    if (ok) o.matched = o.size;
+  }
+
+  _matchResting() {
+    for (const o of this._orders) this._matchOne(o);
+  }
+
+  cancel(ids) {
+    for (const o of this._orders) if (ids.includes(o.id) && o.remaining > 0) o.cancelled = true;
+  }
+
+  cancelAll() {
+    for (const o of this._orders) if (o.remaining > 0) o.cancelled = true;
+  }
+
+  // No GPS tracking from Bet Angel: estimate "lengths behind" from live prices
+  // (shortest price = leader). Official WINNER result, when present, wins.
+  _lengths() {
+    const out = {};
+    const ids = this.market.runners.map(r => r.selectionId);
+    const prices = ids.map(id => this._lastPrice[id]).filter(p => p != null && p > 1);
+    const minLog = prices.length ? Math.log(Math.min(...prices)) : 0;
+    for (const id of ids) {
+      const p = this._lastPrice[id];
+      const b = this._books[id];
+      if (p == null || (b && !b.active)) { out[id] = 30; continue; }
+      out[id] = Math.min(Math.max((Math.log(p) - minLog) * 6, 0), 30);
+    }
+    for (const [id, res] of Object.entries(this._results)) {
+      if (res === 'WINNER') out[id] = 0;
+      else if (out[id] === 0) out[id] = 0.5;
+    }
+    return out;
+  }
+
+  snapshot() {
+    if (this.inPlay && !this._lapsedAtOff) {
+      this._lapsedAtOff = true;
+      for (const o of this._orders) if (!o.keep && o.remaining > 0) o.cancelled = true;
+    }
+    const books = this.market.runners.map(r => this._book(r.selectionId));
+    const orders = this._orders.map(o => ({
+      betId: o.id, selectionId: o.sel, side: o.side, price: o.price, size: o.size,
+      sizeMatched: o.matched, sizeRemaining: o.remaining, complete: o.remaining <= 0,
+      avgPriceMatched: o.matched > 0 ? o.price : null, keep: o.keep
+    }));
+    const matches = this._orders.filter(o => o.matched > 0).map(o => ({
+      selectionId: o.sel, side: o.side, price: o.price, size: o.matched
+    }));
+    return {
+      marketId: this.market.marketId,
+      status: this._status,
+      inPlay: this._inPlay,
+      betDelay: this._betDelay,
+      runners: books,
+      orders,
+      matches,
+      receivedAt: this._receivedAt,
+      lengthsBehind: this._inPlay ? this._lengths() : null,
+      runner(id) { return this.runners.find(r => r.selectionId === id) || null; }
+    };
+  }
+}
+
+// Connects to the bridge. Server-Sent Events first; if that fails repeatedly
+// (or EventSource is missing) it falls back to polling the HTTP snapshot.
+// Works over plain http:// on the LAN and does NOT need the service worker.
+const LiveFeed = {
+  mode: 'off',            // off | sse | poll
+  state: 'disconnected',  // connected | waiting_for_market | stale | disconnected | bet_angel_offline | api_error | unauthorized
+  message: '',
+  lastFrameAt: 0,
+  _es: null,
+  _sseFailures: 0,
+  _pollTimer: null,
+  _watchdog: null,
+  _gen: 0,
+
+  baseUrl() {
+    let u = (liveConfig.bridgeUrl || '').trim();
+    if (!u && typeof location !== 'undefined' && /^https?:$/.test(location.protocol)) u = location.origin;
+    if (u && !/^https?:\/\//i.test(u)) u = `http://${u}`;
+    return u.replace(/\/+$/, '');
+  },
+
+  start() {
+    this.stop();
+    const base = this.baseUrl();
+    if (!base) { this._setState('disconnected', 'Enter the bridge address in Settings'); return; }
+    if (!liveConfig.bridgeToken) { this._setState('unauthorized', 'Enter the token from the bridge window in Settings'); return; }
+    this._gen++;
+    this._sseFailures = 0;
+    this.lastFrameAt = 0;
+    this._setState('disconnected', `Connecting to ${base}…`);
+    this._watchdog = setInterval(() => this._checkStale(), 1000);
+    if (typeof EventSource === 'undefined') this._startPolling(); else this._connectSse();
+  },
+
+  stop() {
+    this._gen++;
+    if (this._es) { try { this._es.close(); } catch (_) {} this._es = null; }
+    clearTimeout(this._pollTimer);
+    clearInterval(this._watchdog);
+    this._pollTimer = null;
+    this._watchdog = null;
+    this.mode = 'off';
+  },
+
+  _url(path) {
+    return `${this.baseUrl()}${path}?token=${encodeURIComponent(liveConfig.bridgeToken)}`;
+  },
+
+  _connectSse() {
+    this.mode = 'sse';
+    const gen = this._gen;
+    const es = new EventSource(this._url('/api/live/stream'));
+    this._es = es;
+    es.onmessage = (e) => {
+      if (gen !== this._gen) return;
+      this._sseFailures = 0;
+      try { this._onFrame(JSON.parse(e.data)); } catch (_) {}
+    };
+    es.onerror = () => {
+      if (gen !== this._gen) return;
+      this._sseFailures++;
+      // CLOSED means the browser gave up (e.g. 401 or network refused): use HTTP polling,
+      // which also reports a wrong token clearly. Otherwise EventSource auto-retries.
+      if (es.readyState === 2 || this._sseFailures >= 3) {
+        try { es.close(); } catch (_) {}
+        this._es = null;
+        this._startPolling();
+      } else {
+        this._setState('disconnected', 'Lost contact with bridge, retrying…');
+      }
+    };
+  },
+
+  _startPolling() {
+    this.mode = 'poll';
+    const gen = this._gen;
+    const loop = async () => {
+      if (gen !== this._gen) return;
+      let wait = 500;
+      const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const to = setTimeout(() => ctrl && ctrl.abort(), 3000);
+      try {
+        const res = await fetch(this._url('/api/live/snapshot'), { cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
+        if (gen !== this._gen) return;
+        if (res.status === 401) {
+          this._setState('unauthorized', 'Wrong token: check the token in the bridge window');
+          wait = 3000;
+        } else if (!res.ok) {
+          this._setState('disconnected', `Bridge returned HTTP ${res.status}`);
+          wait = 2000;
+        } else {
+          this._onFrame(await res.json());
+        }
+      } catch (_) {
+        if (gen !== this._gen) return;
+        this._setState('disconnected', `Cannot reach bridge at ${this.baseUrl()}`);
+        wait = 2000;
+      } finally {
+        clearTimeout(to);
+      }
+      // Sequential: the next request is only scheduled after this one finished.
+      if (gen === this._gen) this._pollTimer = setTimeout(loop, wait);
+    };
+    loop();
+  },
+
+  _checkStale() {
+    if (this.mode === 'off') return;
+    if (this.lastFrameAt && Date.now() - this.lastFrameAt > 4000 && this.state !== 'unauthorized') {
+      this._setState('disconnected', 'No data from the bridge for 4s');
+    }
+  },
+
+  _onFrame(f) {
+    this.lastFrameAt = Date.now();
+    this._setState(f.state || 'disconnected', f.message || '');
+    if (f.market && f.market.runners && f.market.runners.length > 0) handleLiveMarket(f.market);
+  },
+
+  _setState(st, msg) {
+    if (st === this.state && msg === this.message) return;
+    this.state = st;
+    this.message = msg;
+    updateLiveStrip();
+  }
+};
+
+const LIVE_STATE_UI = {
+  connected: { label: 'CONNECTED', col: '#3DDC84' },
+  waiting_for_market: { label: 'WAITING FOR MARKET', col: '#F5A623' },
+  stale: { label: 'STALE DATA', col: '#F5A623' },
+  disconnected: { label: 'DISCONNECTED', col: '#FF5A5A' },
+  bet_angel_offline: { label: 'BET ANGEL OFFLINE', col: '#FF5A5A' },
+  api_error: { label: 'BET ANGEL API ERROR', col: '#FF5A5A' },
+  unauthorized: { label: 'WRONG TOKEN', col: '#FF5A5A' },
+  starting: { label: 'STARTING', col: '#8B93A1' }
+};
+
+function updateLiveStrip() {
+  const strip = document.getElementById('uiLiveStrip');
+  if (!strip) return;
+  const isLive = settings.dataSource === 'live';
+  strip.classList.toggle('hidden', !isLive);
+  const ui = LIVE_STATE_UI[LiveFeed.state] || LIVE_STATE_UI.disconnected;
+  const text = `${ui.label}${LiveFeed.message ? ' · ' + LiveFeed.message : ''}`;
+  if (isLive) {
+    document.getElementById('uiLiveDot').style.background = ui.col;
+    const st = document.getElementById('uiLiveState');
+    st.textContent = `LIVE · ${ui.label}`;
+    st.style.color = ui.col;
+    document.getElementById('uiLiveMsg').textContent = LiveFeed.message || '';
+  }
+  const connText = document.getElementById('uiLiveConnText');
+  if (connText) {
+    connText.textContent = isLive ? text : 'Simulated mode';
+    connText.style.color = isLive ? ui.col : AppColors.muted;
+  }
+}
+
+function liveMarketToApp(m) {
+  const start = m.startTime ? new Date(m.startTime) : null;
+  const hhmm = start && !isNaN(start)
+    ? `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')} `
+    : '';
+  const furlongs = furlongsFromName(m.name);
+  const runners = [...m.runners]
+    .sort((a, b) => (a.cloth ?? 99) - (b.cloth ?? 99))
+    .map((r, i) => ({ selectionId: liveSelId(r.selectionId), name: r.name, sortPriority: r.cloth ?? i + 1 }));
+  return {
+    marketId: m.marketId,
+    isLive: true,
+    name: 'Live · Bet Angel',
+    venue: '',
+    title: `${hhmm}${m.name}`,
+    startTime: m.startTime || null,
+    furlongs,
+    raceLen: furlongs ? Math.round(furlongs * 13) : 90,
+    volatility: 0,
+    runners
+  };
+}
+
+function showLiveWaitingMarket() {
+  currentMarket = {
+    marketId: 'LIVE.WAITING', isLive: true, name: 'Live · Bet Angel', venue: '',
+    title: 'Waiting for Bet Angel…', startTime: null, furlongs: null, raceLen: 90, runners: []
+  };
+  currentRace = new LiveRace(currentMarket);
+  ranges = new RangeTracker();
+  motion = new MarketMotion();
+  engine = new TradeEngine(currentMarket, motion, setStatus);
+  columnOrder = null;
+  orderAtOff = false;
+  offAtMs = null;
+  raceSettled = false;
+  statusMsg = 'Live mode: waiting for a market from Bet Angel';
+  statusBad = false;
+  onNewSnapshot(currentRace.snapshot());
+}
+
+function startLiveMarket(m) {
+  currentCardIdx = null;
+  raceSettled = false;
+  currentMarket = liveMarketToApp(m);
+  currentRace = new LiveRace(currentMarket);
+  ranges = new RangeTracker();
+  motion = new MarketMotion();
+  engine = new TradeEngine(currentMarket, motion, setStatus);
+  columnOrder = null;
+  orderAtOff = false;
+  offAtMs = null;
+  statusMsg = `Live market: ${m.name}`;
+  statusBad = false;
+  currentRace.applyMarket(m, Date.now());
+  if (m.inPlay) {
+    // Joined after the off: estimate the off time from the scheduled start.
+    const st = currentRace._startTime;
+    offAtMs = (st && !isNaN(st) && Date.now() > st && Date.now() - st < 15 * 60 * 1000) ? st : Date.now();
+  }
+  onNewSnapshot(currentRace.snapshot());
+}
+
+function handleLiveMarket(m) {
+  if (settings.dataSource !== 'live') return;
+  if (!currentMarket || !currentMarket.isLive || currentMarket.marketId !== m.marketId) {
+    startLiveMarket(m);
+    return;
+  }
+  currentRace.applyMarket(m, Date.now());
+  onNewSnapshot(currentRace.snapshot());
 }
 
 // ============================================================================
@@ -2412,12 +2853,17 @@ function renderProgressBar(progress, elapsedSecs, runners, furlongs) {
   const sorted = [...runners].sort((a, b) => a.behind - b.behind);
 
   if (progress == null) {
-    const remPre = currentRace ? Math.max(0, Math.ceil(currentRace._preOff - currentRace._t)) : 0;
+    const remPre = currentRace
+      ? (currentRace.isLive
+          ? (currentRace.secondsToOff != null ? Math.ceil(currentRace.secondsToOff) : null)
+          : Math.max(0, Math.ceil(currentRace._preOff - currentRace._t)))
+      : 0;
+    const remText = remPre != null ? `${remPre}s` : 'waiting';
     const fav = runners.find(r => r.favourite) || sorted[0];
     if (fav && fav.name) {
-      elText.innerHTML = `Pre-off (${remPre}s) · <span style="color:${AppColors.leader}; font-weight:800;">Fav: #${fav.cloth} ${fav.name}</span>`;
+      elText.innerHTML = `Pre-off (${remText}) · <span style="color:${AppColors.leader}; font-weight:800;">Fav: #${fav.cloth} ${fav.name}</span>`;
     } else {
-      elText.textContent = `Pre-off (${remPre}s to off)`;
+      elText.textContent = `Pre-off (${remText})`;
     }
     rightText.textContent = furlongs ? `${fmtFurlongs(furlongs)} · waiting for the off` : 'Waiting for the off';
     rightText.style.color = AppColors.muted;
@@ -3165,12 +3611,58 @@ function closeSettings() {
   renderUI();
 }
 
-function setStakeMode(mode) {
-  settings.stakeMode = mode;
+function setDataSource(mode) {
+  if (settings.dataSource === mode) return;
+  settings.dataSource = mode;
+  liveConfig.dataSource = mode;
+  saveLiveConfig();
   renderSettingsScreen();
+  updateLiveStrip();
+  if (mode === 'live') {
+    LiveFeed.start();
+    showLiveWaitingMarket();
+  } else {
+    LiveFeed.stop();
+    startInitialScreenshotRace();
+  }
+}
+
+function saveBridgeConfig() {
+  const u = document.getElementById('inpBridgeUrl');
+  const t = document.getElementById('inpBridgeToken');
+  if (u) liveConfig.bridgeUrl = u.value.trim();
+  if (t) liveConfig.bridgeToken = t.value.trim();
+  liveConfig.dataSource = 'live';
+  settings.dataSource = 'live';
+  saveLiveConfig();
+  renderSettingsScreen();
+  updateLiveStrip();
+  LiveFeed.start();
+  showLiveWaitingMarket();
 }
 
 function renderSettingsScreen() {
+  // 1. Data Source radios & inputs
+  const srcMode = settings.dataSource || 'sim';
+  const rSim = document.getElementById('radioSrcSim');
+  const rLive = document.getElementById('radioSrcLive');
+  if (rSim) {
+    const active = srcMode === 'sim';
+    rSim.style.borderColor = active ? AppColors.profit : AppColors.muted;
+    rSim.innerHTML = active ? `<div style="width:10px; height:10px; border-radius:50%; background:${AppColors.profit};"></div>` : '';
+  }
+  if (rLive) {
+    const active = srcMode === 'live';
+    rLive.style.borderColor = active ? AppColors.profit : AppColors.muted;
+    rLive.innerHTML = active ? `<div style="width:10px; height:10px; border-radius:50%; background:${AppColors.profit};"></div>` : '';
+  }
+  const inpUrl = document.getElementById('inpBridgeUrl');
+  const inpTok = document.getElementById('inpBridgeToken');
+  if (inpUrl && document.activeElement !== inpUrl) inpUrl.value = liveConfig.bridgeUrl || '';
+  if (inpTok && document.activeElement !== inpTok) inpTok.value = liveConfig.bridgeToken || '';
+  updateLiveStrip();
+
+  // 2. Stake & Liability
   const mode = settings.stakeMode || 'standardLiability';
   const modes = [
     { id: 'standardLiability', el: 'radioStandardLiability' },
@@ -3455,14 +3947,25 @@ function renderRaceList() {
 // ============================================================================
 // 11. SIMULATION LOOP & PWA SERVICE WORKER
 // ============================================================================
-startInitialScreenshotRace();
+if (settings.dataSource === 'live') {
+  showLiveWaitingMarket();
+  LiveFeed.start();
+} else {
+  startInitialScreenshotRace();
+}
+updateLiveStrip();
 
 setInterval(() => {
   if (!currentRace || currentRace.closed) return;
   const welcomeModal = document.getElementById('welcomeControlsModal');
   if (welcomeModal && !welcomeModal.classList.contains('hidden')) return;
-  currentRace.step(0.3);
-  onNewSnapshot(currentRace.snapshot());
+  if (currentRace.isLive) {
+    currentRace.step();
+    renderUI();
+  } else {
+    currentRace.step(0.3);
+    onNewSnapshot(currentRace.snapshot());
+  }
 }, 300);
 
 window.addEventListener('resize', renderUI);

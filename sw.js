@@ -1,4 +1,4 @@
-const CACHE_NAME = 'inplay-trader-sim-v4';
+const CACHE_NAME = 'inplay-trader-sim-v5';
 const ASSETS = [
   './',
   './index.html',
@@ -26,6 +26,9 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  // Never intercept or cache bridge live API requests
+  if (url.pathname.startsWith('/api/')) return;
   event.respondWith(
     fetch(event.request)
       .then((res) => {
